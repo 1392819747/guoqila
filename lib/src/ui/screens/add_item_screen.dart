@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../models/item.dart';
+import '../../models/category.dart';
 import '../../providers/item_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({super.key});
+  final Item? item;
+
+  const AddItemScreen({super.key, this.item});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
@@ -15,66 +20,66 @@ class AddItemScreen extends StatefulWidget {
 
 class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _categoryController = TextEditingController();
-  DateTime _expiryDate = DateTime.now().add(const Duration(days: 7));
+  late TextEditingController _nameController;
+  late TextEditingController _categoryController;
+  late TextEditingController _noteController;
+  DateTime? _expiryDate;
   DateTime _purchaseDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.item?.name);
+    _categoryController = TextEditingController(text: widget.item?.category ?? 'Food');
+    _noteController = TextEditingController(text: widget.item?.note);
+    _expiryDate = widget.item?.expiryDate;
+    if (widget.item != null) {
+      _purchaseDate = widget.item!.purchaseDate;
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _categoryController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context, bool isExpiry) async {
-    final initialDate = isExpiry ? _expiryDate : _purchaseDate;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.black,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
+  void _saveItem() {
+    if (_formKey.currentState!.validate() && _expiryDate != null) {
+      final newItem = Item(
+        id: widget.item?.id ?? const Uuid().v4(),
+        name: _nameController.text,
+        category: _categoryController.text,
+        expiryDate: _expiryDate!,
+        purchaseDate: _purchaseDate,
+        note: _noteController.text,
+      );
 
-    if (picked != null) {
-      setState(() {
-        if (isExpiry) {
-          _expiryDate = picked;
-        } else {
-          _purchaseDate = picked;
-        }
-      });
+      final provider = context.read<ItemProvider>();
+      if (widget.item != null) {
+        provider.updateItem(newItem);
+      } else {
+        provider.addItem(newItem);
+      }
+
+      Navigator.pop(context);
     }
   }
 
-  void _saveItem() {
-    if (_formKey.currentState!.validate()) {
-      final newItem = Item(
-        name: _nameController.text,
-        category: _categoryController.text.isEmpty ? 'General' : _categoryController.text,
-        expiryDate: _expiryDate,
-        purchaseDate: _purchaseDate,
-      );
-
-      context.read<ItemProvider>().addItem(newItem);
+  void _deleteItem() {
+    if (widget.item != null) {
+      context.read<ItemProvider>().deleteItem(widget.item!.id);
       Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isEditing = widget.item != null;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -84,111 +89,188 @@ class _AddItemScreenState extends State<AddItemScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Add Item', style: AppTextStyles.titleLarge),
+        title: Text(
+          isEditing ? l10n.editItem : l10n.addItem,
+          style: AppTextStyles.titleLarge,
+        ),
+        centerTitle: true,
+        actions: [
+          if (isEditing)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              onPressed: _deleteItem,
+            ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLabel('Item Name'),
-              TextFormField(
-                controller: _nameController,
-                decoration: _inputDecoration('e.g. Milk'),
-                validator: (value) => value!.isEmpty ? 'Please enter a name' : null,
-              ),
-              const SizedBox(height: 24),
-              _buildLabel('Category'),
-              TextFormField(
-                controller: _categoryController,
-                decoration: _inputDecoration('e.g. Dairy'),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Purchase Date'),
-                        GestureDetector(
-                          onTap: () => _selectDate(context, false),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.calendar_today, size: 20),
-                                const SizedBox(width: 8),
-                                Text(DateFormat('MMM dd, yyyy').format(_purchaseDate)),
-                              ],
-                            ),
-                          ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLabel(l10n.name),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: _inputDecoration(l10n.name),
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Please enter a name' : null,
+                ),
+                const SizedBox(height: 24),
+                _buildLabel(l10n.category),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: Category.defaultCategories.length,
+                    separatorBuilder: (context, index) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final category = Category.defaultCategories[index];
+                      final isSelected = _categoryController.text == category.name;
+                      return ChoiceChip(
+                        label: Text(Category.getLocalizedName(context, category.name)),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _categoryController.text = category.name;
+                            });
+                          }
+                        },
+                        selectedColor: category.color,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
                         ),
-                      ],
-                    ),
+                        backgroundColor: AppColors.surface,
+                        side: BorderSide(
+                          color: isSelected ? Colors.transparent : Colors.grey.shade300,
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Expiry Date'),
-                        GestureDetector(
-                          onTap: () => _selectDate(context, true),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.primary),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.event_busy, size: 20, color: Colors.red),
-                                const SizedBox(width: 8),
-                                Text(
-                                  DateFormat('MMM dd, yyyy').format(_expiryDate),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel(l10n.expiryDate),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                              );
+                              if (date != null) {
+                                setState(() => _expiryDate = date);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _expiryDate == null ? AppColors.error : Colors.transparent,
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _expiryDate == null
+                                        ? 'Select Date'
+                                        : DateFormat.yMMMd().format(_expiryDate!),
+                                    style: AppTextStyles.bodyLarge,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _saveItem,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel(l10n.purchaseDate),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _purchaseDate,
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now(),
+                              );
+                              if (date != null) {
+                                setState(() => _purchaseDate = date);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.history, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    DateFormat.yMMMd().format(_purchaseDate),
+                                    style: AppTextStyles.bodyLarge,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildLabel(l10n.note),
+                TextFormField(
+                  controller: _noteController,
+                  decoration: _inputDecoration(l10n.note).copyWith(
+                    alignLabelWithHint: true,
                   ),
-                  child: const Text(
-                    'Save Item',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _saveItem,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      l10n.save,
+                      style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -198,7 +280,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: AppTextStyles.labelSmall),
+      child: Text(
+        text,
+        style: AppTextStyles.labelSmall,
+      ),
     );
   }
 

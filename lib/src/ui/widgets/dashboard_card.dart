@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
@@ -20,6 +21,8 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -52,7 +55,7 @@ class DashboardCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Includes\nAI Assistant',
+                    l10n.aiAssistant,
                     style: AppTextStyles.labelSmall.copyWith(
                       color: AppColors.textSecondary,
                       height: 1.2,
@@ -109,7 +112,7 @@ class DashboardCard extends StatelessWidget {
                     style: AppTextStyles.displayLarge,
                   ),
                   Text(
-                    '$count / $total items',
+                    l10n.itemsCount(count, total),
                     style: AppTextStyles.labelSmall,
                   ),
                 ],

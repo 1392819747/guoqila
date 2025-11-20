@@ -1,0 +1,84 @@
+{
+  "appTitle": "Expiry Tracker",
+  "home": "Home",
+  "stats": "Stats",
+  "settings": "Settings",
+  "dashboard": "Dashboard",
+  "totalItems": "Total Items",
+  "expired": "Expired",
+  "expiringSoon": "Expiring Soon",
+  "searchPlaceholder": "Search items...",
+  "sortExpiryDate": "Expiry Date",
+  "sortName": "Name",
+  "sortPurchaseDate": "Purchase Date",
+  "allItems": "All Items",
+  "noItems": "No items yet. Add one!",
+  "addItem": "Add Item",
+  "editItem": "Edit Item",
+  "name": "Name",
+  "category": "Category",
+  "expiryDate": "Expiry Date",
+  "purchaseDate": "Purchase Date",
+  "note": "Note",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "categoryFood": "Food",
+  "categoryMedicine": "Medicine",
+  "categoryCosmetics": "Cosmetics",
+  "categoryDocuments": "Documents",
+  "categoryElectronics": "Electronics",
+  "categoryOthers": "Others",
+  "daysLeft": "{days} days left",
+  "@daysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAssistant": "Includes\nAI Assistant",
+  "itemsCount": "{count} / {total} items",
+  "@itemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "categoryAll": "All",
+  "notificationTitleSoon": "Item Expiring Soon",
+  "notificationBodySoon": "{item} expires in 3 days!",
+  "@notificationBodySoon": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationTitleExpired": "Item Expired",
+  "notificationBodyExpired": "{item} has expired today!",
+  "@notificationBodyExpired": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsGeneral": "General",
+  "settingsNotifications": "Notifications",
+  "settingsNotificationsSubtitle": "Receive alerts for expiring items",
+  "settingsDataManagement": "Data Management",
+  "settingsClearData": "Clear All Data",
+  "settingsClearDataSubtitle": "Delete all items permanently",
+  "settingsLanguage": "Language",
+  "dialogClearDataTitle": "Clear All Data?",
+  "dialogClearDataContent": "This action cannot be undone. All your items will be deleted.",
+  "dialogDelete": "Delete",
+  "snackBarDataCleared": "All data cleared",
+  "statistics": "Statistics",
+  "categoryDistribution": "Category Distribution"
+}

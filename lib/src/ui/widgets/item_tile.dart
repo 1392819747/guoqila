@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../models/item.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -18,6 +19,7 @@ class ItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isExpired = item.isExpired;
     final daysLeft = item.daysUntilExpiry;
     
@@ -26,13 +28,13 @@ class ItemTile extends StatelessWidget {
 
     if (isExpired) {
       statusColor = AppColors.error;
-      statusText = 'Expired';
+      statusText = l10n.expired;
     } else if (daysLeft <= 3) {
       statusColor = Colors.orange;
-      statusText = '$daysLeft days left';
+      statusText = l10n.daysLeft(daysLeft);
     } else {
       statusColor = AppColors.primary;
-      statusText = '$daysLeft days left';
+      statusText = l10n.daysLeft(daysLeft);
     }
 
     return Dismissible(

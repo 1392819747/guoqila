@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../theme/app_colors.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
@@ -13,75 +14,68 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
-      child: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(0, Icons.grid_view_rounded),
-            _buildNavItem(1, Icons.swap_horiz_rounded),
-            _buildNavItem(2, Icons.calendar_today_rounded, isMain: true),
-            _buildNavItem(3, Icons.show_chart_rounded),
-            _buildNavItem(4, Icons.person_outline_rounded),
-          ],
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildNavItem(context, 0, Icons.home_rounded, l10n.home),
+          _buildNavItem(context, 3, Icons.bar_chart_rounded, l10n.stats),
+          _buildNavItem(context, 4, Icons.settings_rounded, l10n.settings),
+        ],
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, {bool isMain = false}) {
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label) {
     final isSelected = currentIndex == index;
     
-    if (isMain) {
-      return GestureDetector(
-        onTap: () => onTap(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.secondary,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 24),
-              if (isSelected) ...[
-                const SizedBox(width: 8),
-                const Text(
-                  'Events',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
+    return GestureDetector(
+      onTap: () => onTap(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 20 : 16,
+          vertical: 12,
         ),
-      );
-    }
-
-    return IconButton(
-      onPressed: () => onTap(index),
-      icon: Icon(
-        icon,
-        color: isSelected ? AppColors.secondary : AppColors.textSecondary,
-        size: 28,
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.black : Colors.white,
+              size: 24,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
