@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'l10n/generated/app_localizations.dart';
-
-import 'src/models/item.dart';
 import 'src/providers/item_provider.dart';
 import 'src/providers/locale_provider.dart';
 import 'src/services/notification_service.dart';
@@ -14,10 +11,6 @@ import 'src/ui/theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Hive
-  await Hive.initFlutter();
-  Hive.registerAdapter(ItemAdapter());
 
   // Initialize Services
   final storageService = StorageService();
