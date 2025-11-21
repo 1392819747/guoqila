@@ -563,7 +563,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                       
                       // Category Filter
                       SizedBox(
-                        height: 50,
+                        height: 60,
                         child: Row(
                           children: [
                             _buildCategoryChip(context, 'All', '${l10n.categoryAll} (${getCategoryCount('All')})'),
@@ -766,7 +766,6 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.white,

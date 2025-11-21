@@ -261,14 +261,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                                 _categoryController.text = category.name;
                               });
                             },
-                            onLongPress: () {
-                              // ReorderableWrap handles long press for dragging
-                              // We might need another way to delete, or use double tap?
-                              // Or maybe ReorderableWrap allows long press if not dragging?
-                              // Usually dragging starts on long press.
-                              // Let's keep delete on double tap or maybe just rely on reordering.
-                              // User asked for reordering on long press.
-                            },
                             onDoubleTap: () {
                                _showDeleteCategoryDialog(context, category.name);
                             },
