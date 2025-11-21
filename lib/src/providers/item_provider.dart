@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/item.dart';
+import '../models/category.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 
@@ -75,9 +76,53 @@ class ItemProvider extends ChangeNotifier {
     return _items.where((item) => item.isExpired).toList();
   }
 
+  List<Category> _categories = [];
+  List<Category> get categories => _categories;
+
   void _loadItems() {
     _items = _storageService.getAllItems();
+    _loadCategories();
     _sortItems();
+    notifyListeners();
+  }
+
+  void _loadCategories() {
+    final savedCategoryNames = _storageService.getCategories();
+    if (savedCategoryNames.isEmpty) {
+      // First run: use default categories
+      _categories = List.from(Category.defaultCategories);
+      _saveCategories();
+    } else {
+      _categories = savedCategoryNames.map((name) => Category.getByName(name)).toList();
+    }
+  }
+
+  Future<void> _saveCategories() async {
+    final names = _categories.map((c) => c.name).toList();
+    await _storageService.saveCategories(names);
+  }
+
+  Future<void> addCategory(String name) async {
+    if (_categories.any((c) => c.name == name)) return;
+    
+    _categories.add(Category.getByName(name));
+    await _saveCategories();
+    notifyListeners();
+  }
+
+  Future<void> deleteCategory(String name) async {
+    _categories.removeWhere((c) => c.name == name);
+    await _saveCategories();
+    notifyListeners();
+  }
+
+  Future<void> reorderCategories(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = _categories.removeAt(oldIndex);
+    _categories.insert(newIndex, item);
+    await _saveCategories();
     notifyListeners();
   }
 

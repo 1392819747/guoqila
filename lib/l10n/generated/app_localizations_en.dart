@@ -84,6 +84,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categoryFood => 'Food';
 
   @override
+  String get categoryDairy => 'Dairy';
+
+  @override
+  String get categoryMeat => 'Meat';
+
+  @override
   String get categoryMedicine => 'Medicine';
 
   @override
@@ -97,6 +103,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryOthers => 'Others';
+
+  @override
+  String get categoryBeverages => 'Beverages';
+
+  @override
+  String get categorySnacks => 'Snacks';
+
+  @override
+  String get categoryHousehold => 'Household';
+
+  @override
+  String get categoryPetSupplies => 'Pet Supplies';
+
+  @override
+  String get actionNeeded => 'Action Needed';
+
+  @override
+  String expiredItemsCount(int count) {
+    return '$count items have expired';
+  }
+
+  @override
+  String get expiringSoonTitle => 'Expiring Soon';
+
+  @override
+  String expiringSoonItemsCount(int count) {
+    return '$count items need attention';
+  }
+
+  @override
+  String get allFresh => 'All Fresh';
+
+  @override
+  String allFreshSubtitle(int count) {
+    return 'You have $count healthy items';
+  }
+
+  @override
+  String get review => 'Review';
 
   @override
   String daysLeft(int days) {
@@ -170,4 +215,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryDistribution => 'Category Distribution';
+
+  @override
+  String get addCategory => 'Add Category';
+
+  @override
+  String get newCategoryName => 'New Category Name';
+
+  @override
+  String get deleteCategory => 'Delete Category';
+
+  @override
+  String deleteCategoryConfirm(Object category) {
+    return 'Are you sure you want to delete category \"$category\"?';
+  }
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get scanReceipt => 'Scan Receipt';
+
+  @override
+  String get manualInput => 'Manual Input';
 }

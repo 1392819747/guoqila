@@ -24,11 +24,45 @@
   "cancel": "Cancel",
   "delete": "Delete",
   "categoryFood": "Food",
+  "categoryDairy": "Dairy",
+  "categoryMeat": "Meat",
   "categoryMedicine": "Medicine",
   "categoryCosmetics": "Cosmetics",
   "categoryDocuments": "Documents",
   "categoryElectronics": "Electronics",
   "categoryOthers": "Others",
+  "categoryBeverages": "Beverages",
+  "categorySnacks": "Snacks",
+  "categoryHousehold": "Household",
+  "categoryPetSupplies": "Pet Supplies",
+  "actionNeeded": "Action Needed",
+  "expiredItemsCount": "{count} items have expired",
+  "@expiredItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expiringSoonTitle": "Expiring Soon",
+  "expiringSoonItemsCount": "{count} items need attention",
+  "@expiringSoonItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allFresh": "All Fresh",
+  "allFreshSubtitle": "You have {count} healthy items",
+  "@allFreshSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "review": "Review",
   "daysLeft": "{days} days left",
   "@daysLeft": {
     "placeholders": {
@@ -80,5 +114,12 @@
   "dialogDelete": "Delete",
   "snackBarDataCleared": "All data cleared",
   "statistics": "Statistics",
-  "categoryDistribution": "Category Distribution"
+  "categoryDistribution": "Category Distribution",
+  "addCategory": "Add Category",
+  "newCategoryName": "New Category Name",
+  "deleteCategory": "Delete Category",
+  "deleteCategoryConfirm": "Are you sure you want to delete category \"{category}\"?",
+  "add": "Add",
+  "scanReceipt": "Scan Receipt",
+  "manualInput": "Manual Input"
 }

@@ -30,18 +30,18 @@ class StatsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.statistics, style: AppTextStyles.displayMedium),
+                  Text(l10n.statistics, style: AppTextStyles.displayMedium.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 32),
                   _buildSummaryCards(context, items.length, provider.expiredItems.length),
                   const SizedBox(height: 32),
-                  Text(l10n.categoryDistribution, style: AppTextStyles.titleLarge),
+                  Text(l10n.categoryDistribution, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   SizedBox(
                     height: 200,
                     child: _buildPieChart(context, items),
                   ),
                   const SizedBox(height: 32),
-                  Text(l10n.expiringSoon, style: AppTextStyles.titleLarge),
+                  Text(l10n.expiringSoon, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   SizedBox(
                     height: 200,
@@ -83,37 +83,31 @@ class StatsScreen extends StatelessWidget {
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
+              color: color.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: Colors.black, size: 24),
           ),
           const SizedBox(height: 16),
           Text(
             value,
-            style: AppTextStyles.displayLarge.copyWith(fontSize: 24),
+            style: AppTextStyles.displayLarge.copyWith(fontSize: 32, fontWeight: FontWeight.w900),
           ),
           Text(
             title,
-            style: AppTextStyles.labelSmall,
+            style: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -128,7 +122,7 @@ class StatsScreen extends StatelessWidget {
 
     return PieChart(
       PieChartData(
-        sectionsSpace: 2,
+        sectionsSpace: 4,
         centerSpaceRadius: 40,
         sections: categoryCounts.entries.map((entry) {
           final category = Category.getByName(entry.key);
@@ -136,12 +130,13 @@ class StatsScreen extends StatelessWidget {
             color: category.color,
             value: entry.value.toDouble(),
             title: '${entry.value}',
-            radius: 50,
+            radius: 60,
             titleStyle: const TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Colors.black,
             ),
+            borderSide: const BorderSide(color: Colors.black, width: 2),
           );
         }).toList(),
       ),
@@ -179,7 +174,7 @@ class StatsScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     months[(value.toInt() - 1) % 12],
-                    style: const TextStyle(fontSize: 10),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 );
               },
@@ -198,8 +193,9 @@ class StatsScreen extends StatelessWidget {
               BarChartRodData(
                 toY: entry.value.toDouble(),
                 color: AppColors.secondary,
-                width: 16,
-                borderRadius: BorderRadius.circular(4),
+                width: 24,
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.black, width: 2),
               ),
             ],
           );

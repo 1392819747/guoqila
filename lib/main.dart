@@ -60,6 +60,24 @@ class MyApp extends StatelessWidget {
               bodyMedium: const TextStyle(fontFamily: 'Inter'),
             ),
             scaffoldBackgroundColor: AppColors.background,
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: Colors.white,
+              headerBackgroundColor: AppColors.primary,
+              headerForegroundColor: Colors.black,
+              dayStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold),
+              yearStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.bold),
+              todayBorder: const BorderSide(color: Colors.black, width: 2),
+              todayForegroundColor: MaterialStateProperty.all(Colors.black),
+              dayOverlayColor: MaterialStateProperty.all(AppColors.primary.withOpacity(0.2)),
+              confirmButtonStyle: ButtonStyle(
+                foregroundColor: MaterialStateProperty.all(Colors.black),
+                textStyle: MaterialStateProperty.all(const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              cancelButtonStyle: ButtonStyle(
+                foregroundColor: MaterialStateProperty.all(Colors.black),
+                textStyle: MaterialStateProperty.all(const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
           ),
           locale: localeProvider.locale,
           localizationsDelegates: const [

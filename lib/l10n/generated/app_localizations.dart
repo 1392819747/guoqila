@@ -252,6 +252,18 @@ abstract class AppLocalizations {
   /// **'Food'**
   String get categoryFood;
 
+  /// No description provided for @categoryDairy.
+  ///
+  /// In en, this message translates to:
+  /// **'Dairy'**
+  String get categoryDairy;
+
+  /// No description provided for @categoryMeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Meat'**
+  String get categoryMeat;
+
   /// No description provided for @categoryMedicine.
   ///
   /// In en, this message translates to:
@@ -281,6 +293,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Others'**
   String get categoryOthers;
+
+  /// No description provided for @categoryBeverages.
+  ///
+  /// In en, this message translates to:
+  /// **'Beverages'**
+  String get categoryBeverages;
+
+  /// No description provided for @categorySnacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Snacks'**
+  String get categorySnacks;
+
+  /// No description provided for @categoryHousehold.
+  ///
+  /// In en, this message translates to:
+  /// **'Household'**
+  String get categoryHousehold;
+
+  /// No description provided for @categoryPetSupplies.
+  ///
+  /// In en, this message translates to:
+  /// **'Pet Supplies'**
+  String get categoryPetSupplies;
+
+  /// No description provided for @actionNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Action Needed'**
+  String get actionNeeded;
+
+  /// No description provided for @expiredItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items have expired'**
+  String expiredItemsCount(int count);
+
+  /// No description provided for @expiringSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiring Soon'**
+  String get expiringSoonTitle;
+
+  /// No description provided for @expiringSoonItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items need attention'**
+  String expiringSoonItemsCount(int count);
+
+  /// No description provided for @allFresh.
+  ///
+  /// In en, this message translates to:
+  /// **'All Fresh'**
+  String get allFresh;
+
+  /// No description provided for @allFreshSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {count} healthy items'**
+  String allFreshSubtitle(int count);
+
+  /// No description provided for @review.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get review;
 
   /// No description provided for @daysLeft.
   ///
@@ -407,6 +485,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Category Distribution'**
   String get categoryDistribution;
+
+  /// No description provided for @addCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Category'**
+  String get addCategory;
+
+  /// No description provided for @newCategoryName.
+  ///
+  /// In en, this message translates to:
+  /// **'New Category Name'**
+  String get newCategoryName;
+
+  /// No description provided for @deleteCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Category'**
+  String get deleteCategory;
+
+  /// No description provided for @deleteCategoryConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete category \"{category}\"?'**
+  String deleteCategoryConfirm(Object category);
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @scanReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan Receipt'**
+  String get scanReceipt;
+
+  /// No description provided for @manualInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual Input'**
+  String get manualInput;
 }
 
 class _AppLocalizationsDelegate

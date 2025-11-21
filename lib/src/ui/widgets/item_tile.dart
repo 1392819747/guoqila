@@ -4,6 +4,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../models/item.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'neumorphic_container.dart';
 
 class ItemTile extends StatelessWidget {
   final Item item;
@@ -49,22 +50,17 @@ class ItemTile extends StatelessWidget {
       ),
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: NeumorphicContainer(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(24),
-          ),
+          borderRadius: 24,
           child: Row(
             children: [
-              Container(
+              NeumorphicContainer(
                 width: 60,
                 height: 60,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                borderRadius: 16,
+                isPressed: true, // Inset look for icon bg
                 child: const Icon(Icons.fastfood_rounded, size: 30),
               ),
               const SizedBox(width: 16),

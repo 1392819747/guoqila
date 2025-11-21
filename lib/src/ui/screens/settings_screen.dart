@@ -29,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.settings, style: AppTextStyles.displayMedium),
+              Text(l10n.settings, style: AppTextStyles.displayMedium.copyWith(fontWeight: FontWeight.w900)),
               const SizedBox(height: 32),
               _buildSectionHeader(l10n.settingsGeneral),
               const SizedBox(height: 16),
@@ -41,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (value) {
                     setState(() => _notificationsEnabled = value);
                   },
+                  activeColor: Colors.black,
                   activeTrackColor: AppColors.primary,
                 ),
               ),
@@ -48,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingTile(
                 title: l10n.settingsLanguage,
                 subtitle: _getLanguageName(context.watch<LocaleProvider>().locale.languageCode),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(Icons.chevron_right, color: Colors.black),
                 onTap: () => _showLanguageDialog(context),
               ),
               const SizedBox(height: 32),
@@ -57,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSettingTile(
                 title: l10n.settingsClearData,
                 subtitle: l10n.settingsClearDataSubtitle,
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(Icons.chevron_right, color: Colors.black),
                 onTap: () => _showClearDataDialog(context),
                 isDestructive: true,
               ),
@@ -92,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       style: AppTextStyles.labelSmall.copyWith(
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
+        color: Colors.black,
       ),
     );
   }
@@ -106,10 +108,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.black, width: 2),
         ),
         child: Row(
           children: [
@@ -120,14 +123,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     title,
                     style: AppTextStyles.titleLarge.copyWith(
-                      fontSize: 16,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: isDestructive ? AppColors.error : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: AppTextStyles.labelSmall,
+                    style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -142,8 +146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showLanguageDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
@@ -163,8 +168,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildLanguageOption(BuildContext context, String name, String code) {
     final isSelected = context.read<LocaleProvider>().locale.languageCode == code;
     return ListTile(
-      title: Text(name),
-      trailing: isSelected ? const Icon(Icons.check, color: AppColors.primary) : null,
+      title: Text(
+        name,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: Colors.black,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.black) : null,
       onTap: () {
         context.read<LocaleProvider>().setLocale(Locale(code));
         Navigator.pop(context);
@@ -177,12 +188,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.dialogClearDataTitle),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Colors.black, width: 2),
+        ),
+        title: Text(l10n.dialogClearDataTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(l10n.dialogClearDataContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
+            child: Text(l10n.cancel, style: const TextStyle(color: Colors.black)),
           ),
           TextButton(
             onPressed: () {
@@ -193,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: Text(l10n.dialogDelete),
+            child: Text(l10n.dialogDelete, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

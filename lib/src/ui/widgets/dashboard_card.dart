@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import 'neumorphic_container.dart';
+import 'neumorphic_button.dart';
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -23,20 +25,10 @@ class DashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Container(
+    return NeumorphicContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      borderRadius: 32,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -63,12 +55,10 @@ class DashboardCard extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
+              NeumorphicContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                borderRadius: 20,
+                isPressed: true, // Inset look for the counter
                 child: const Text('30+', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
@@ -124,17 +114,14 @@ class DashboardCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.keyboard_arrow_up_rounded),
-              GestureDetector(
-                onTap: onTap,
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white),
-                ),
+              NeumorphicButton(
+                onPressed: onTap,
+                width: 56,
+                height: 56,
+                borderRadius: 28, // Circle
+                padding: EdgeInsets.zero,
+                color: AppColors.secondary,
+                child: const Icon(Icons.add, color: Colors.white),
               ),
             ],
           ),

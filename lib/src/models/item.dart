@@ -21,20 +21,20 @@ class Item extends HiveObject {
   DateTime purchaseDate;
 
   @HiveField(5)
-  String? note;
+  final String? note;
 
   @HiveField(6)
-  String? imagePath;
+  final String? imagePath; // Product image path
 
   Item({
-    String? id,
+    required this.id,
     required this.name,
     required this.category,
     required this.expiryDate,
     required this.purchaseDate,
     this.note,
     this.imagePath,
-  }) : id = id ?? const Uuid().v4();
+  });
 
   int get daysUntilExpiry {
     final now = DateTime.now();

@@ -84,6 +84,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get categoryFood => '食品';
 
   @override
+  String get categoryDairy => '乳制品';
+
+  @override
+  String get categoryMeat => '肉类';
+
+  @override
   String get categoryMedicine => '药品';
 
   @override
@@ -97,6 +103,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get categoryOthers => '其他';
+
+  @override
+  String get categoryBeverages => '饮料';
+
+  @override
+  String get categorySnacks => '零食';
+
+  @override
+  String get categoryHousehold => '日用品';
+
+  @override
+  String get categoryPetSupplies => '宠物用品';
+
+  @override
+  String get actionNeeded => '需要处理';
+
+  @override
+  String expiredItemsCount(int count) {
+    return '$count 个物品已过期';
+  }
+
+  @override
+  String get expiringSoonTitle => '即将过期';
+
+  @override
+  String expiringSoonItemsCount(int count) {
+    return '$count 个物品需要关注';
+  }
+
+  @override
+  String get allFresh => '无过期物品！';
+
+  @override
+  String allFreshSubtitle(int count) {
+    return '你的库存状态超健康～';
+  }
+
+  @override
+  String get review => '查看';
 
   @override
   String daysLeft(int days) {
@@ -168,4 +213,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get categoryDistribution => '分类分布';
+
+  @override
+  String get addCategory => '添加分类';
+
+  @override
+  String get newCategoryName => '新分类名称';
+
+  @override
+  String get deleteCategory => '删除分类';
+
+  @override
+  String deleteCategoryConfirm(Object category) {
+    return '确定要删除分类“$category”吗？';
+  }
+
+  @override
+  String get add => '添加';
+
+  @override
+  String get scanReceipt => '拍照识别';
+
+  @override
+  String get manualInput => '手动添加';
 }
