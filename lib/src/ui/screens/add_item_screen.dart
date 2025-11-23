@@ -16,8 +16,9 @@ import '../widgets/bold_dialog.dart';
 
 class AddItemScreen extends StatefulWidget {
   final Item? item;
+  final bool batchMode;
 
-  const AddItemScreen({super.key, this.item});
+  const AddItemScreen({super.key, this.item, this.batchMode = false});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
@@ -145,18 +146,19 @@ class _AddItemScreenState extends State<AddItemScreen> {
         imagePath: _imagePath,
         quantity: _quantity,
       );
+      if (widget.batchMode) {
+        Navigator.pop(context, newItem);
+        return;
+      }
 
       final provider = context.read<ItemProvider>();
-      // Check if item exists in the box (has a valid key) or if it's a new scanned item
       if (widget.item != null && widget.item!.isInBox) {
-        // Update existing item that's already in the database
         provider.updateItem(newItem);
       } else {
-        // Add new item (including scanned items)
         provider.addItem(newItem);
       }
 
-      Navigator.pop(context, true); // Return true to indicate successful save
+      Navigator.pop(context, true);
     }
   }
 
@@ -1047,4 +1049,3 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 }
-

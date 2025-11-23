@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/scan_service.dart';
 import '../../models/item.dart';
-import '../../models/category.dart';
 import '../../providers/item_provider.dart';
 import 'add_item_screen.dart';
 import '../theme/app_text_styles.dart';
@@ -24,12 +23,17 @@ class MultiItemConfirmScreen extends StatefulWidget {
 
 class _MultiItemConfirmScreenState extends State<MultiItemConfirmScreen> {
   late List<ScanItem> _pendingItems;
-  final Set<int> _completedIndices = {};
+  late List<bool> _completedFlags;
+  late List<Item?> _editedItems;
+  late List<GlobalKey> _itemKeys;
 
   @override
   void initState() {
     super.initState();
-    _pendingItems = widget.items;
+    _pendingItems = List<ScanItem>.from(widget.items);
+    _completedFlags = List<bool>.filled(_pendingItems.length, false, growable: true);
+    _editedItems = List<Item?>.filled(_pendingItems.length, null, growable: true);
+    _itemKeys = List<GlobalKey>.generate(_pendingItems.length, (_) => GlobalKey(), growable: true);
   }
 
   // Map AI category to internal ID (similar to HomeView logic)
@@ -95,49 +99,153 @@ class _MultiItemConfirmScreenState extends State<MultiItemConfirmScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddItemScreen(item: tempItem),
+        builder: (context) => AddItemScreen(item: tempItem, batchMode: true),
       ),
     );
 
 
 
-    if (mounted && result != null) {
-      setState(() {
-        _completedIndices.add(index);
-      });
-      
-      // If all items are completed, show success and close after delay
-      if (_completedIndices.length == _pendingItems.length) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white),
-                  const SizedBox(width: 12),
-                  const Text(
-                    '所有商品已录入完成 ✅',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 2),
-            ),
+    if (!mounted) return;
+    setState(() {
+      if (result is Item) {
+        _editedItems[index] = result;
+      }
+      _completedFlags[index] = true;
+    });
+
+    final next = _completedFlags.indexWhere((v) => !v);
+    if (next != -1) {
+      final ctx = _itemKeys[next].currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 300),
+          alignment: 0.1,
+          curve: Curves.easeOut,
+        );
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('已确认，继续下一个'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(milliseconds: 800),
+        ),
+      );
+    }
+  }
+
+  void _saveAll() {
+    final provider = Provider.of<ItemProvider>(context, listen: false);
+    for (int i = 0; i < _pendingItems.length; i++) {
+      final edited = _editedItems[i];
+      if (edited != null) {
+        provider.addItem(edited);
+      } else {
+        final scanItem = _pendingItems[i];
+        final category = _mapCategory(scanItem.category, scanItem.name ?? '');
+        final item = Item(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: scanItem.name ?? '',
+          category: category,
+          expiryDate: scanItem.expiryDate != null
+              ? DateTime.parse(scanItem.expiryDate!)
+              : (scanItem.productionDate != null && scanItem.shelfLifeDays != null
+                  ? DateTime.parse(scanItem.productionDate!).add(Duration(days: scanItem.shelfLifeDays!))
+                  : DateTime.now().add(Duration(days: scanItem.shelfLifeDays ?? 7))),
+          purchaseDate: DateTime.now(),
+          quantity: scanItem.quantity,
+          imagePath: widget.imageFile.path,
+        );
+        provider.addItem(item);
+      }
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: const [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 12),
+            Text('已保存所有商品'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  void _saveCompleted() {
+    final provider = Provider.of<ItemProvider>(context, listen: false);
+    final toRemove = <int>[];
+    for (int i = 0; i < _pendingItems.length; i++) {
+      if (_completedFlags[i]) {
+        final edited = _editedItems[i];
+        if (edited != null) {
+          provider.addItem(edited);
+        } else {
+          final scanItem = _pendingItems[i];
+          final category = _mapCategory(scanItem.category, scanItem.name ?? '');
+          final item = Item(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            name: scanItem.name ?? '',
+            category: category,
+            expiryDate: scanItem.expiryDate != null
+                ? DateTime.parse(scanItem.expiryDate!)
+                : (scanItem.productionDate != null && scanItem.shelfLifeDays != null
+                    ? DateTime.parse(scanItem.productionDate!).add(Duration(days: scanItem.shelfLifeDays!))
+                    : DateTime.now().add(Duration(days: scanItem.shelfLifeDays ?? 7))),
+            purchaseDate: DateTime.now(),
+            quantity: scanItem.quantity,
+            imagePath: widget.imageFile.path,
           );
-          
-          // Delay before closing to allow user to see the completion message
-          Future.delayed(const Duration(milliseconds: 1500), () {
-            if (mounted) {
-              Navigator.pop(context);
-            }
-          });
+          provider.addItem(item);
         }
+        toRemove.add(i);
+      }
+    }
+    if (toRemove.isEmpty) return;
+    setState(() {
+      for (final idx in toRemove.reversed) {
+        _pendingItems.removeAt(idx);
+        _completedFlags.removeAt(idx);
+        _editedItems.removeAt(idx);
+        _itemKeys.removeAt(idx);
+      }
+    });
+    final count = toRemove.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 12),
+            Text('已保存已完成的商品$count件'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    if (_pendingItems.isEmpty) {
+      Navigator.pop(context);
+    } else {
+      final ctx = _itemKeys.first.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 300),
+          alignment: 0.1,
+          curve: Curves.easeOut,
+        );
       }
     }
   }
@@ -165,8 +273,10 @@ class _MultiItemConfirmScreenState extends State<MultiItemConfirmScreen> {
         ),
         centerTitle: true,
       ),
-      body: Column(
+      body: Stack(
         children: [
+          Column(
+            children: [
           // Image Preview with bold border style
           Container(
             margin: const EdgeInsets.all(16),
@@ -208,111 +318,187 @@ class _MultiItemConfirmScreenState extends State<MultiItemConfirmScreen> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final item = _pendingItems[index];
-                final isCompleted = _completedIndices.contains(index);
-                
-                return GestureDetector(
-                  onTap: isCompleted ? null : () => _processItem(index),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isCompleted 
+                final isCompleted = _completedFlags[index];
+                return Dismissible(
+                  key: ValueKey('scan_item_$index'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    color: Colors.red,
+                    child: const Icon(Icons.delete_outline, color: Colors.white),
+                  ),
+                onDismissed: (_) {
+                  setState(() {
+                    _pendingItems.removeAt(index);
+                    _completedFlags.removeAt(index);
+                    _editedItems.removeAt(index);
+                    _itemKeys.removeAt(index);
+                  });
+                },
+                child: KeyedSubtree(
+                  key: _itemKeys[index],
+                  child: GestureDetector(
+                    onTap: isCompleted ? null : () => _processItem(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isCompleted 
                           ? (isDark ? Colors.green.withOpacity(0.2) : Colors.green.withOpacity(0.1))
                           : theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isCompleted 
-                            ? Colors.green
-                            : (isDark ? Colors.white54 : Colors.black),
-                        width: 2,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isCompleted 
+                              ? Colors.green
+                              : (isDark ? Colors.white54 : Colors.black),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        // Icon
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: isCompleted 
-                                ? Colors.green
-                                : (isDark ? Colors.grey[700] : Colors.grey[200]),
-                            borderRadius: BorderRadius.circular(12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: isCompleted 
+                                  ? Colors.green
+                                  : (isDark ? Colors.grey[700] : Colors.grey[200]),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              isCompleted ? Icons.check_circle : Icons.inventory_2_outlined,
+                              color: isCompleted ? Colors.white : theme.iconTheme.color,
+                              size: 24,
+                            ),
                           ),
-                          child: Icon(
-                            isCompleted ? Icons.check_circle : Icons.inventory_2_outlined,
-                            color: isCompleted ? Colors.white : theme.iconTheme.color,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        
-                        // Content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      item.name ?? '未知商品',
-                                      style: AppTextStyles.bodyLarge.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.textTheme.bodyLarge?.color,
-                                      ),
-                                    ),
-                                  ),
-                                  if (item.quantity > 1)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.grey[700] : Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
                                       child: Text(
-                                        'x${item.quantity}',
-                                        style: TextStyle(
+                                        item.name ?? '未知商品',
+                                        style: AppTextStyles.bodyLarge.copyWith(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: theme.textTheme.bodyMedium?.color,
+                                          color: theme.textTheme.bodyLarge?.color,
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${item.category ?? "其他"} ${item.expiryDate != null ? "• 到期: ${item.expiryDate}" : item.shelfLifeDays != null ? "• 保质期 ${item.shelfLifeDays}天" : ""}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                                    if (item.quantity > 1)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.grey[700] : Colors.grey[200],
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'x${item.quantity}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: theme.textTheme.bodyMedium?.color,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${item.category ?? "其他"} ${item.expiryDate != null ? "• 到期: ${item.expiryDate}" : item.shelfLifeDays != null ? "• 保质期 ${item.shelfLifeDays}天" : ""}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        
-                        // Arrow or checkmark
-                        Icon(
-                          isCompleted ? Icons.check : Icons.arrow_forward_ios,
-                          size: 16,
-                          color: isCompleted 
-                              ? Colors.green 
-                              : theme.iconTheme.color?.withOpacity(0.5),
-                        ),
-                      ],
+                          Icon(
+                            isCompleted ? Icons.check : Icons.arrow_forward_ios,
+                            size: 16,
+                            color: isCompleted 
+                                ? Colors.green 
+                                : theme.iconTheme.color?.withOpacity(0.5),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                );
-              },
+                ),
+              );
+            },
+          ),
+        ),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+          child: AnimatedSlide(
+            duration: const Duration(milliseconds: 300),
+            offset: (_completedFlags.isNotEmpty && _completedFlags.any((v) => v)) ? const Offset(0, 0) : const Offset(0, 1),
+            curve: Curves.easeOut,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: (_completedFlags.isNotEmpty && _completedFlags.any((v) => v)) ? 1 : 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, -10),
+                      ),
+                    ],
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: (_completedFlags.isNotEmpty && _completedFlags.any((v) => v)) ? _saveCompleted : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('保存已完成项'),
+                      ),
+                    ),
+                    if (_completedFlags.isNotEmpty && _completedFlags.every((v) => v)) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _saveAll,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: const Text('确认保存全部'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
+          ),
           ),
         ],
       ),
