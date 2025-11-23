@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Backend Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .provider-item {
+            cursor: pointer;
+        }
+
+        .status-badge {
+            font-size: 0.8em;
+        }
+
+        pre {
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="d-flex justify-content-between align-items-center mb-4">
+            <h1>🤖 AI Backend Admin</h1>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="loadData()">刷新数据</button>
+                <button class="btn btn-outline-danger" onclick="logout()">退出</button>
+            </div>
+        </header>
+
+        <div class="row">
+            <!-- Left Column: Providers -->
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">AI 服务商</h5>
+                        <button class="btn btn-sm btn-primary" onclick="showAddProviderModal()">+ 添加</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="providers-list" class="list-group">
+                            <!-- Providers will be loaded here -->
+                            <div class="text-center p-3">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">最近日志</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="logs-list">
+                            <p class="text-muted">暂无日志显示功能 (需实现API)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Settings & Prompt -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">系统提示词 (Prompt)</h5>
+                        <button class="btn btn-sm btn-success" onclick="savePrompt()">保存</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">修改后实时生效，无需重启</label>
+                            <textarea id="system-prompt" class="form-control" rows="15"
+                                style="font-family: monospace; font-size: 0.9em;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Provider Modal -->
+    <div class="modal fade" id="providerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">添加服务商</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="providerForm">
+                        <input type="hidden" id="providerId">
+                        <div class="mb-3">
+                            <label class="form-label">名称</label>
+                            <input type="text" class="form-control" id="pName" required placeholder="例如: OpenAI GPT-4">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Provider ID</label>
+                            <input type="text" class="form-control" id="pId" required placeholder="例如: openai-gpt4">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Base URL</label>
+                            <input type="url" class="form-control" id="pUrl" required
+                                placeholder="https://api.openai.com/v1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-control" id="pKey" placeholder="留空则不修改">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">模型</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="pModel" required>
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="detectModel()">自动探测</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">优先级 (越小越优先)</label>
+                            <input type="number" class="form-control" id="pPriority" value="10">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" id="btnDelete" style="display:none"
+                        onclick="deleteProvider()">删除</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProvider()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

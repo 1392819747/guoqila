@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
-import 'neumorphic_container.dart';
-import 'neumorphic_button.dart';
+
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -25,10 +24,20 @@ class DashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return NeumorphicContainer(
+    return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      borderRadius: 32,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -40,10 +49,10 @@ class DashboardCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: AppColors.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.inventory_2_outlined, size: 20),
+                    child: Icon(Icons.inventory_2_outlined, size: 20, color: AppColors.primary),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -55,10 +64,12 @@ class DashboardCard extends StatelessWidget {
                   ),
                 ],
               ),
-              NeumorphicContainer(
+              Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                borderRadius: 20,
-                isPressed: true, // Inset look for the counter
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: const Text('30+', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
@@ -114,14 +125,25 @@ class DashboardCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.keyboard_arrow_up_rounded),
-              NeumorphicButton(
-                onPressed: onTap,
-                width: 56,
-                height: 56,
-                borderRadius: 28, // Circle
-                padding: EdgeInsets.zero,
-                color: AppColors.secondary,
-                child: const Icon(Icons.add, color: Colors.white),
+              InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(28),
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.secondary.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
               ),
             ],
           ),

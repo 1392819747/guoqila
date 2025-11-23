@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -89,6 +90,13 @@ class MyApp extends StatelessWidget {
                 textStyle: MaterialStateProperty.all(const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
+            appBarTheme: const AppBarTheme(
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.dark, // Dark icons for light theme
+                statusBarBrightness: Brightness.light, // For iOS
+              ),
+            ),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -126,6 +134,13 @@ class MyApp extends StatelessWidget {
               cancelButtonStyle: ButtonStyle(
                 foregroundColor: MaterialStateProperty.all(Colors.white),
                 textStyle: MaterialStateProperty.all(const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            appBarTheme: const AppBarTheme(
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light, // Light icons for dark theme
+                statusBarBrightness: Brightness.dark, // For iOS
               ),
             ),
           ),

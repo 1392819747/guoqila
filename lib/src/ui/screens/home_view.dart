@@ -4,7 +4,9 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../providers/item_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/dashboard_card.dart';
 import '../widgets/bold_item_card.dart';
+import 'multi_item_confirm_screen.dart';
 import '../widgets/expiration_summary_card.dart';
 import 'add_item_screen.dart';
 
@@ -302,11 +304,63 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
     if (image != null) {
       // Show loading indicator
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('分析图片中...'),
-          backgroundColor: Colors.black,
-          duration: Duration(seconds: 1),
+      // Show loading dialog with app's bold border style
+      if (!mounted) return;
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white54 : Colors.black,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'AI 识别中...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '如果超时将自动切换离线模式',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       );
 
@@ -314,94 +368,81 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
       final result = await scanService.scanImage(File(image.path));
       
       if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading dialog
 
-      String itemName = '扫描商品';
-      String category = 'Food';
-      String? noteContent;
+      // Check if we have multiple items
+      if (result.items.length > 1) {
+        // Navigate to multi-item confirm screen
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MultiItemConfirmScreen(
+              items: result.items,
+              imageFile: File(image.path),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Single item flow (fallback to first item or default)
+      String itemName = result.text ?? '扫描商品';
+      String category = result.category ?? 'Food';
       
-      if (result.text != null && result.text!.isNotEmpty) {
-        // Split into lines and score each
-        var lines = result.text!.split('\n')
-            .map((l) => l.trim())
-            .where((l) => l.isNotEmpty)
-            .toList();
-        
-        // Clean up lines: remove ingredients after closing bracket
-        lines = lines.map((line) {
-          // If line contains )，extract only the part before and including )
-          if (line.contains(')')) {
-            final closingBracketIndex = line.indexOf(')');
-            return line.substring(0, closingBracketIndex + 1);
+      // Get user's categories (including custom ones)
+      final provider = Provider.of<ItemProvider>(context, listen: false);
+      final userCategoryNames = provider.categories.map((c) => c.name).toList();
+      
+      // If the category already exists in user's list (including custom), use it directly
+      if (!userCategoryNames.contains(category)) {
+        // Category not found, try to map to built-in English ID
+        final validCategories = ['Food', 'Dairy', 'Meat', 'Medicine', 'Cosmetics', 'Documents', 'Electronics', 'Beverages', 'Snacks', 'Household', 'Pet Supplies', 'Others'];
+        if (!validCategories.contains(category)) {
+          // Try to infer from the category string itself (e.g. "饮料" -> "Beverages")
+          String inferred = _inferCategory(category);
+          
+          // If inference returned 'Food' (default) but the input wasn't 'Food', 
+          // try inferring from the item name instead as a fallback
+          if (inferred == 'Food' && category != 'Food' && category != '食品') {
+             inferred = _inferCategory(itemName);
           }
-          // If line is too long, try to find a natural break point
-          if (line.length > 25) {
-            // Look for separators: ●, •, 、, space after Chinese
-            final separators = ['●', '•', '、'];
-            for (final sep in separators) {
-              if (line.contains(sep)) {
-                return line.substring(0, line.indexOf(sep)).trim();
-              }
-            }
-            // Otherwise truncate at 20 chars if it has brand name
-            if (line.length > 20 && _containsChinese(line.substring(0, 20))) {
-              return line.substring(0, 20);
-            }
-          }
-          return line;
-        }).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-        
-        if (lines.isNotEmpty) {
-          // Score all lines
-          final scoredLines = lines.map((line) {
-            return MapEntry(line, _scoreProductName(line));
-          }).toList();
-          
-          // Sort by score (highest first)
-          scoredLines.sort((a, b) => b.value.compareTo(a.value));
-          
-          // Collect top Chinese lines with good scores (score > 15)
-          var topLines = scoredLines
-              .where((entry) => _containsChinese(entry.key) && entry.value > 15)
-              .take(3) // Take top 3 candidates first
-              .map((entry) => entry.key)
-              .toList();
-          
-          // De-duplicate: remove lines that are substrings of others
-          final uniqueLines = <String>[];
-          for (final line in topLines) {
-            bool isDuplicate = false;
-            for (final existing in uniqueLines) {
-              if (existing.contains(line) || line.contains(existing)) {
-                // Keep the longer one
-                if (line.length > existing.length) {
-                  uniqueLines.remove(existing);
-                  uniqueLines.add(line);
-                }
-                isDuplicate = true;
-                break;
-              }
-            }
-            if (!isDuplicate) {
-              uniqueLines.add(line);
-            }
-          }
-          
-          // Take only top 1 if it's a complete brand name, otherwise try to combine
-          topLines = uniqueLines.take(1).toList();
-          
-          // 如果没有中文行，至少取得分最高的行
-          if (topLines.isEmpty && scoredLines.isNotEmpty) {
-            itemName = scoredLines.first.key;
-          } else if (topLines.isNotEmpty) {
-            itemName = topLines.join(' ');
-          }
-          
-          // Try to infer category
-          category = _inferCategory(result.text!);
-          
-          // Save full recognized text to notes
-          noteContent = '扫描识别内容：\n${result.text}';
+          category = inferred;
         }
+      }
+      DateTime? expiryDate;
+      
+      // Parse expiry date if available
+      if (result.expiryDate != null) {
+        try {
+          expiryDate = DateTime.parse(result.expiryDate!);
+        } catch (e) {
+          debugPrint('Failed to parse expiry date: $e');
+        }
+      }
+      
+      // If no expiry date from backend, try to calculate from production date + shelf life
+      if (expiryDate == null && result.items.isNotEmpty) {
+         final item = result.items.first;
+         if (item.productionDate != null && item.shelfLifeDays != null) {
+            try {
+              final prodDate = DateTime.parse(item.productionDate!);
+              expiryDate = prodDate.add(Duration(days: item.shelfLifeDays!));
+            } catch (e) {
+              debugPrint('Failed to parse production date: $e');
+            }
+         }
+         
+         // Fallback: use current date + shelf life if production date is missing
+         if (expiryDate == null && item.shelfLifeDays != null) {
+            expiryDate = DateTime.now().add(Duration(days: item.shelfLifeDays!));
+         }
+      }
+      expiryDate ??= DateTime.now().add(const Duration(days: 7));
+      
+      // Use recognition result as note if available
+      String? noteContent;
+      if (result.confidence > 0.5) {
+        noteContent = 'AI识别：${result.text}';
       }
 
       // Save scanned image to app directory
@@ -420,7 +461,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
         id: itemId,
         name: itemName,
         category: category,
-        expiryDate: DateTime.now().add(const Duration(days: 7)), // Default 7 days
+        expiryDate: expiryDate,
         purchaseDate: DateTime.now(),
         note: noteContent,
         imagePath: savedImagePath, // Save scanned image path
@@ -793,10 +834,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                         label: l10n.aiRecognition,
                         onTap: () {
                           _toggleFab();
-                          // TODO: Implement AI Recognition
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('AI 识别功能开发中...')),
-                          );
+                          _handleScan(context);
                         },
                       ),
                       const SizedBox(height: 12),

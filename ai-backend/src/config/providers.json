@@ -1,0 +1,55 @@
+{
+    "providers": [
+        {
+            "id": "openai-gpt4o",
+            "type": "openai",
+            "priority": 1,
+            "enabled": true,
+            "config": {
+                "baseUrl": "https://api.openai.com/v1",
+                "model": "gpt-4o",
+                "maxTokens": 500,
+                "temperature": 0.1
+            }
+        },
+        {
+            "id": "deepseek",
+            "type": "openai",
+            "priority": 2,
+            "enabled": true,
+            "config": {
+                "baseUrl": "https://api.deepseek.com/v1",
+                "model": "deepseek-chat",
+                "maxTokens": 500,
+                "temperature": 0.1
+            }
+        },
+        {
+            "id": "qwen",
+            "type": "openai",
+            "priority": 3,
+            "enabled": false,
+            "config": {
+                "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                "model": "qwen-vl-max",
+                "maxTokens": 500,
+                "temperature": 0.1
+            }
+        }
+    ],
+    "prompt": {
+        "system": "你是一个商品识别专家。请识别图片中的商品信息，必须返回严格的JSON格式，不要包含其他文字说明。\n\n返回格式示例：\n{\"name\": \"可口可乐汽水\", \"category\": \"饮料\", \"expiryDate\": \"2025-12-31\"}\n\n说明：\n- name: 商品名称，尽量详细\n- category: 从以下分类中选择最合适的一个：食品、饮料、化妆品、药品、电子产品、证件、零食、日用品、宠物用品、其他\n- expiryDate: 如果图片中能看到保质期或生产日期，请推算并返回格式为YYYY-MM-DD的日期；如果看不到，返回null",
+        "categories": [
+            "食品",
+            "饮料",
+            "化妆品",
+            "药品",
+            "电子产品",
+            "证件",
+            "零食",
+            "日用品",
+            "宠物用品",
+            "其他"
+        ]
+    }
+}

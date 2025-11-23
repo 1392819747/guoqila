@@ -156,7 +156,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         provider.addItem(newItem);
       }
 
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Return true to indicate successful save
     }
   }
 
@@ -313,7 +313,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         if (didPop) return;
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) {
-          Navigator.pop(context);
+          Navigator.pop(context, false); // Return false to indicate viewed but not saved
         }
       },
       child: Scaffold(
@@ -321,25 +321,28 @@ class _AddItemScreenState extends State<AddItemScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          scrolledUnderElevation: 0, // Fix overlay issue
+          scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios_new, color: Colors.black), // Keep black on colored bg
+            icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : Colors.black),
             onPressed: () async {
               final shouldPop = await _onWillPop();
               if (shouldPop && context.mounted) {
-                Navigator.pop(context);
+                Navigator.pop(context, false); // Return false to indicate viewed but not saved
               }
             },
           ),
           title: Text(
             isEditing ? l10n.editItem : l10n.addItem,
-            style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900, color: Colors.black),
+            style: AppTextStyles.titleLarge.copyWith(
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           centerTitle: true,
           actions: [
             if (isEditing)
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.black),
+                icon: Icon(Icons.delete_outline, color: isDark ? Colors.white : Colors.black),
                 onPressed: _deleteItem,
               ),
           ],
