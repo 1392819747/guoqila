@@ -7,12 +7,16 @@ class ExpirationSummaryCard extends StatelessWidget {
   final int expiringSoonCount;
   final int expiredCount;
   final int totalCount;
+  final VoidCallback? onReviewTap;
+  final bool isExpanded;
 
   const ExpirationSummaryCard({
     super.key,
     required this.expiringSoonCount,
     required this.expiredCount,
     required this.totalCount,
+    this.onReviewTap,
+    this.isExpanded = false,
   });
 
   @override
@@ -20,6 +24,8 @@ class ExpirationSummaryCard extends StatelessWidget {
     // Determine state
     final hasExpired = expiredCount > 0;
     final hasExpiringSoon = expiringSoonCount > 0;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     Color backgroundColor;
     Color textColor;
@@ -30,7 +36,7 @@ class ExpirationSummaryCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     if (hasExpired) {
-      backgroundColor = Colors.black;
+      backgroundColor = isDark ? Colors.red[900]! : Colors.black;
       textColor = Colors.white;
       title = l10n.actionNeeded;
       subtitle = l10n.expiredItemsCount(expiredCount);
@@ -57,11 +63,12 @@ class ExpirationSummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
+        border: isDark && hasExpired ? Border.all(color: Colors.white24, width: 1) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,17 +85,39 @@ class ExpirationSummaryCard extends StatelessWidget {
                 child: Icon(icon, color: textColor, size: 24),
               ),
               if (hasExpiringSoon || hasExpired)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    l10n.review,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                GestureDetector(
+                  onTap: onReviewTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          l10n.review,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: Colors.black,
+                        ),
+                      ],
                     ),
                   ),
                 ),

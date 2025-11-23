@@ -23,6 +23,12 @@
   "save": "保存",
   "cancel": "取消",
   "delete": "删除",
+  "unsavedChangesTitle": "未保存的更改",
+  "unsavedChangesMessage": "您有未保存的更改，是否保存？",
+  "discard": "放弃",
+  "statistics": "统计",
+  "settings": "设置",
+  "home": "首页",
   "categoryFood": "食品",
   "categoryDairy": "乳制品",
   "categoryMeat": "肉类",
@@ -69,5 +75,6 @@
   "deleteCategoryConfirm": "确定要删除分类“{category}”吗？",
   "add": "添加",
   "scanReceipt": "拍照识别",
-  "manualInput": "手动添加"
+  "manualInput": "手动添加",
+  "aiRecognition": "AI 识别"
 }

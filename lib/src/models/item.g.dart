@@ -24,13 +24,15 @@ class ItemAdapter extends TypeAdapter<Item> {
       purchaseDate: fields[4] as DateTime,
       note: fields[5] as String?,
       imagePath: fields[6] as String?,
+      quantity: fields[7] == null ? 1 : fields[7] as int,
+      isPinned: fields[8] == null ? false : fields[8] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Item obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class ItemAdapter extends TypeAdapter<Item> {
       ..writeByte(5)
       ..write(obj.note)
       ..writeByte(6)
-      ..write(obj.imagePath);
+      ..write(obj.imagePath)
+      ..writeByte(7)
+      ..write(obj.quantity)
+      ..writeByte(8)
+      ..write(obj.isPinned);
   }
 
   @override

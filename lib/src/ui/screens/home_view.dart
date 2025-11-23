@@ -16,6 +16,8 @@ import '../../models/item.dart';
 import '../../models/category.dart';
 import 'package:uuid/uuid.dart';
 
+import '../widgets/grid_item_card.dart';
+
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -33,6 +35,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
   late Animation<double> _fabScaleAnimation;
   late Animation<Offset> _fabSlideAnimation;
   bool _isFabExpanded = false;
+  bool _showExpiringDetails = false;
+  bool _isGridView = false; // View mode state
 
   @override
   void initState() {
@@ -435,8 +439,11 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -445,7 +452,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
               builder: (context, provider, child) {
                 final items = provider.items;
                 final expiredCount = provider.expiredItems.length;
-                final expiringSoonCount = items.where((i) => i.daysUntilExpiry <= 3 && i.daysUntilExpiry >= 0).length;
+                final expiringSoonCount = items.where((i) => i.daysUntilExpiry <= 7 && i.daysUntilExpiry >= 0).length;
                 
                 // Filter items based on search query
                 final filteredItems = items.where((i) {
@@ -453,18 +460,18 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                   return i.name.toLowerCase().contains(_searchQuery.toLowerCase());
                 }).toList();
 
-                final expiringItems = filteredItems.where((i) => i.daysUntilExpiry <= 3 && !i.isExpired).toList();
+                final expiringItems = filteredItems.where((i) => i.daysUntilExpiry <= 7 && !i.isExpired).toList();
                 
                 // Filter items based on selection
-                var otherItems = filteredItems.where((i) => i.daysUntilExpiry > 3 || i.isExpired).toList();
+                // Show ALL items in the list, not just non-expiring ones
+                var otherItems = filteredItems.toList();
+                
                 if (_selectedCategory != 'All') {
                   otherItems = otherItems.where((i) => i.category == _selectedCategory).toList();
                 }
 
-                // Sort other items: Expired at bottom, then by date
+                // Sort items: Expired at TOP, then by date (natural sort does this)
                 otherItems.sort((a, b) {
-                   if (a.isExpired && !b.isExpired) return 1;
-                   if (!a.isExpired && b.isExpired) return -1;
                    return a.expiryDate.compareTo(b.expiryDate);
                 });
 
@@ -478,23 +485,42 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header
+                      ExpirationSummaryCard(
+                        expiringSoonCount: expiringSoonCount,
+                        expiredCount: expiredCount,
+                        totalCount: items.length,
+                        isExpanded: _showExpiringDetails,
+                        onReviewTap: () {
+                          setState(() {
+                            _showExpiringDetails = !_showExpiringDetails;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
                       // Search Bar
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.black, width: 2),
+                          border: Border.all(
+                            color: isDark ? Colors.white54 : Colors.black, 
+                            width: 2
+                          ),
                         ),
                         child: TextField(
                           controller: _searchController,
+                          style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                           decoration: InputDecoration(
                             hintText: l10n.searchPlaceholder,
+                            hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
                             border: InputBorder.none,
-                            icon: const Icon(Icons.search, color: Colors.black),
+                            icon: Icon(Icons.search, color: theme.iconTheme.color ?? (isDark ? Colors.white : Colors.black)),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.clear, color: Colors.black),
+                                    icon: Icon(Icons.clear, color: theme.iconTheme.color ?? (isDark ? Colors.white : Colors.black)),
                                     onPressed: () {
                                       _searchController.clear();
                                     },
@@ -503,23 +529,15 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-
-                      // Header
-                      ExpirationSummaryCard(
-                        expiringSoonCount: expiringSoonCount,
-                        expiredCount: expiredCount,
-                        totalCount: items.length,
-                      ),
                       const SizedBox(height: 32),
 
-                      // Expiring Soon Section (Horizontal) - Always show regardless of filter
-                      if (expiringItems.isNotEmpty) ...[
+                      // Expiring Soon Section (Horizontal) - Toggle visibility
+                      if (_showExpiringDetails && expiringItems.isNotEmpty) ...[
                         Text(
                           l10n.expiringSoonTitle,
                           style: AppTextStyles.titleLarge.copyWith(
                             fontWeight: FontWeight.w900,
-                            color: Colors.black,
+                            color: theme.textTheme.titleLarge?.color,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -551,19 +569,88 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                         const SizedBox(height: 32),
                       ],
 
-                      // All Items Section (Vertical)
-                      Text(
-                        l10n.allItems,
-                        style: AppTextStyles.titleLarge.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black,
-                        ),
+                      // All Items Section Header with Toggle
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            l10n.allItems,
+                            style: AppTextStyles.titleLarge.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: theme.textTheme.titleLarge?.color,
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey[800] : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => setState(() => _isGridView = false),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: !_isGridView 
+                                          ? (isDark ? Colors.grey[700] : Colors.white) 
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: !_isGridView ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ] : [],
+                                    ),
+                                    child: Icon(
+                                      Icons.list,
+                                      size: 20,
+                                      color: !_isGridView 
+                                          ? (isDark ? Colors.white : Colors.black) 
+                                          : (isDark ? Colors.grey[400] : Colors.grey),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => setState(() => _isGridView = true),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: _isGridView 
+                                          ? (isDark ? Colors.grey[700] : Colors.white) 
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: _isGridView ? [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ] : [],
+                                    ),
+                                    child: Icon(
+                                      Icons.grid_view,
+                                      size: 20,
+                                      color: _isGridView 
+                                          ? (isDark ? Colors.white : Colors.black) 
+                                          : (isDark ? Colors.grey[400] : Colors.grey),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       
                       // Category Filter
                       SizedBox(
-                        height: 60,
+                        height: 40,
                         child: Row(
                           children: [
                             _buildCategoryChip(context, 'All', '${l10n.categoryAll} (${getCategoryCount('All')})'),
@@ -619,26 +706,52 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                           ),
                         )
                       else
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: otherItems.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            return BoldItemCard(
-                              item: otherItems[index],
-                              index: index,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddItemScreen(item: otherItems[index]),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                        _isGridView 
+                        ? GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.75, // Adjust as needed for card height
+                            ),
+                            itemCount: otherItems.length,
+                            itemBuilder: (context, index) {
+                              return GridItemCard(
+                                item: otherItems[index],
+                                index: index,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddItemScreen(item: otherItems[index]),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: otherItems.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 16),
+                            itemBuilder: (context, index) {
+                              return BoldItemCard(
+                                item: otherItems[index],
+                                index: index,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddItemScreen(item: otherItems[index]),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
                     ],
                   ),
                 );
@@ -670,9 +783,23 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                 position: _fabSlideAnimation,
                 child: ScaleTransition(
                   scale: _fabScaleAnimation,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
+                  child: IntrinsicWidth(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                      _buildFabOption(
+                        context,
+                        icon: Icons.auto_awesome,
+                        label: l10n.aiRecognition,
+                        onTap: () {
+                          _toggleFab();
+                          // TODO: Implement AI Recognition
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('AI 识别功能开发中...')),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       _buildFabOption(
                         context,
                         icon: Icons.camera_alt_outlined,
@@ -700,6 +827,7 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
                   ),
                 ),
               ),
+              ),
             ],
             FloatingActionButton(
               onPressed: _toggleFab,
@@ -723,14 +851,20 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
     required String label,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.black, width: 2),
+          border: Border.all(
+            color: isDark ? Colors.white54 : Colors.black, 
+            width: 2
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -742,13 +876,13 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.black, size: 20),
+            Icon(icon, color: theme.iconTheme.color ?? (isDark ? Colors.white : Colors.black), size: 20),
             const SizedBox(width: 8),
             Text(
               label,
               style: AppTextStyles.labelSmall.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: theme.textTheme.bodyMedium?.color,
               ),
             ),
           ],
@@ -759,6 +893,9 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
 
   Widget _buildCategoryChip(BuildContext context, String id, String label) {
     final isSelected = _selectedCategory == id;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -766,17 +903,25 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.white,
+          color: isSelected 
+              ? (isDark ? theme.colorScheme.primary : Colors.black) 
+              : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.black, width: 2),
+          border: Border.all(
+            color: isDark ? Colors.white54 : Colors.black, 
+            width: 2
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
+            color: isSelected 
+                ? (isDark ? Colors.black : Colors.white) 
+                : theme.textTheme.bodyMedium?.color,
             fontWeight: FontWeight.bold,
+            fontSize: 14,
           ),
         ),
       ),

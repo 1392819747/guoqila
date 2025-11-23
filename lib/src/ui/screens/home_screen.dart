@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/custom_bottom_nav_bar.dart';
 import 'home_view.dart';
-import 'stats_screen.dart';
-import 'settings_screen.dart';
+import 'statistics_view.dart';
+import 'settings_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,10 +17,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const HomeView(),
-    const Center(child: Text('Swap')), // Placeholder for Swap
-    const Center(child: Text('Calendar')), // Placeholder for Calendar
-    const StatsScreen(),
-    const SettingsScreen(),
+    const StatisticsView(),
+    const SettingsView(),
   ];
 
   @override

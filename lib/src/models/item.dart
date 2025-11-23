@@ -26,6 +26,12 @@ class Item extends HiveObject {
   @HiveField(6)
   final String? imagePath; // Product image path
 
+  @HiveField(7, defaultValue: 1)
+  int quantity;
+
+  @HiveField(8, defaultValue: false)
+  bool isPinned;
+
   Item({
     required this.id,
     required this.name,
@@ -34,6 +40,8 @@ class Item extends HiveObject {
     required this.purchaseDate,
     this.note,
     this.imagePath,
+    this.quantity = 1,
+    this.isPinned = false,
   });
 
   int get daysUntilExpiry {

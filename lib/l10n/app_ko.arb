@@ -1,5 +1,7 @@
 {
   "appTitle": "만료 추적기",
+  "@@locale": "ko",
+  "aiRecognition": "AI 인식",
   "home": "홈",
   "stats": "통계",
   "settings": "설정",

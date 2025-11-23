@@ -23,6 +23,12 @@
   "save": "Save",
   "cancel": "Cancel",
   "delete": "Delete",
+  "unsavedChangesTitle": "Unsaved Changes",
+  "unsavedChangesMessage": "You have unsaved changes. Do you want to save them?",
+  "discard": "Discard",
+  "statistics": "Statistics",
+  "settings": "Settings",
+  "home": "Home",
   "categoryFood": "Food",
   "categoryDairy": "Dairy",
   "categoryMeat": "Meat",
@@ -121,5 +127,6 @@
   "deleteCategoryConfirm": "Are you sure you want to delete category \"{category}\"?",
   "add": "Add",
   "scanReceipt": "Scan Receipt",
-  "manualInput": "Manual Input"
+  "manualInput": "Manual Input",
+  "aiRecognition": "AI Recognition"
 }

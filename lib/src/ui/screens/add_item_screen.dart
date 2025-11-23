@@ -28,21 +28,101 @@ class _AddItemScreenState extends State<AddItemScreen> {
   late TextEditingController _nameController;
   late TextEditingController _categoryController;
   late TextEditingController _noteController;
-  DateTime? _expiryDate;
-  DateTime _purchaseDate = DateTime.now();
+  late DateTime _expiryDate;
+  late DateTime _purchaseDate;
   String? _imagePath; // Product image path
+  int _quantity = 1;
+
+  // Initial values for dirty check
+  late String _initialName;
+  late String _initialCategory;
+  late String _initialNote;
+  late DateTime _initialExpiryDate;
+  late String? _initialImagePath;
+  late int _initialQuantity;
+
+  // Production Date Mode State
+  bool _isProductionMode = false;
+  DateTime _productionDate = DateTime.now();
+  int _shelfLifeValue = 12;
+  String _shelfLifeUnit = 'Months'; // Days, Weeks, Months, Years
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.item?.name);
-    _categoryController = TextEditingController(text: widget.item?.category ?? 'Food');
-    _noteController = TextEditingController(text: widget.item?.note);
-    _expiryDate = widget.item?.expiryDate;
-    _imagePath = widget.item?.imagePath; // Load existing image path
-    if (widget.item != null) {
-      _purchaseDate = widget.item!.purchaseDate;
-    }
+    final item = widget.item;
+    _nameController = TextEditingController(text: item?.name ?? '');
+    _categoryController = TextEditingController(text: item?.category ?? 'Food');
+    _noteController = TextEditingController(text: item?.note ?? '');
+    _expiryDate = item?.expiryDate ?? DateTime.now();
+    _purchaseDate = item?.purchaseDate ?? DateTime.now();
+    _imagePath = item?.imagePath; // Load existing image path
+    _quantity = item?.quantity ?? 1;
+
+    // Initialize production date to today if not editing, or estimate if editing (optional, but keeping simple for now)
+    _productionDate = DateTime.now();
+
+    // Store initial values
+    _initialName = _nameController.text;
+    _initialCategory = _categoryController.text;
+    _initialNote = _noteController.text;
+    _initialExpiryDate = _expiryDate;
+    _initialImagePath = _imagePath;
+    _initialQuantity = _quantity;
+  }
+
+  bool get _hasChanges {
+    return _nameController.text != _initialName ||
+        _categoryController.text != _initialCategory ||
+        _noteController.text != _initialNote ||
+        _expiryDate != _initialExpiryDate ||
+        _imagePath != _initialImagePath ||
+        _quantity != _initialQuantity;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+
+    final l10n = AppLocalizations.of(context)!;
+    final shouldPop = await showDialog<bool>(
+      context: context,
+      builder: (context) => BoldDialog(
+        title: l10n.unsavedChangesTitle, // You might need to add this to arb
+        content: Text(
+          l10n.unsavedChangesMessage, // You might need to add this to arb
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          BoldDialogButton(
+            text: l10n.cancel,
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          BoldDialogButton(
+            text: l10n.discard,
+            textColor: Colors.red,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          BoldDialogButton(
+            text: l10n.save,
+            isPrimary: true,
+            onPressed: () {
+              _saveItem();
+              // _saveItem pops the context, so we don't need to return true here usually,
+              // but since we are in onWillPop, we want to prevent the default pop if we are saving manually.
+              // However, _saveItem calls Navigator.pop.
+              // Let's handle it: if user clicks Save, we save and close.
+              // We should return false here to prevent double pop, or let _saveItem handle it.
+              // Actually, simpler:
+              // If Save -> _saveItem() -> pops dialog -> pops screen.
+              // So we return false here to stop the original back action.
+              Navigator.pop(context, false); 
+            },
+          ),
+        ],
+      ),
+    );
+
+    return shouldPop ?? false;
   }
 
   @override
@@ -59,10 +139,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
         id: widget.item?.id ?? const Uuid().v4(),
         name: _nameController.text,
         category: _categoryController.text,
-        expiryDate: _expiryDate!,
+        expiryDate: _expiryDate,
         purchaseDate: _purchaseDate,
         note: _noteController.text,
-        imagePath: _imagePath, // Save image path
+        imagePath: _imagePath,
+        quantity: _quantity,
       );
 
       final provider = context.read<ItemProvider>();
@@ -155,38 +236,126 @@ class _AddItemScreenState extends State<AddItemScreen> {
     });
   }
 
+  Widget _buildQuantityButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.grey100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 18),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        color: Colors.black,
+      ),
+    );
+  }
+
+  void _calculateExpiryDate() {
+    DateTime expiry;
+    switch (_shelfLifeUnit) {
+      case 'Days':
+        expiry = _productionDate.add(Duration(days: _shelfLifeValue));
+        break;
+      case 'Weeks':
+        expiry = _productionDate.add(Duration(days: _shelfLifeValue * 7));
+        break;
+      case 'Months':
+        // Approximate month as 30 days for simplicity, or use a better date logic
+        // Dart's DateTime handles month overflow correctly if we just add months to month field
+        // But simpler to use DateTime(year, month + value, day)
+        expiry = DateTime(_productionDate.year, _productionDate.month + _shelfLifeValue, _productionDate.day);
+        break;
+      case 'Years':
+        expiry = DateTime(_productionDate.year + _shelfLifeValue, _productionDate.month, _productionDate.day);
+        break;
+      default:
+        expiry = _productionDate;
+    }
+    setState(() {
+      _expiryDate = expiry;
+    });
+  }
+
+  Color _getBackgroundColor() {
+    if (_expiryDate == null) return AppColors.primary;
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expiry = DateTime(_expiryDate!.year, _expiryDate!.month, _expiryDate!.day);
+    final daysUntilExpiry = expiry.difference(today).inDays;
+    
+    if (daysUntilExpiry < 0) {
+      return AppColors.grey300; // Expired
+    } else if (daysUntilExpiry <= 7) {
+      return AppColors.primary; // Expiring Soon (<= 7 days)
+    } else {
+      return AppColors.secondary; // Fresh
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isEditing = widget.item != null;
+    final backgroundColor = _getBackgroundColor();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: AppColors.primary, // Yellow background for this screen
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0, // Fix overlay issue
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, color: Colors.black), // Keep black on colored bg
+            onPressed: () async {
+              final shouldPop = await _onWillPop();
+              if (shouldPop && context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          title: Text(
+            isEditing ? l10n.editItem : l10n.addItem,
+            style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900, color: Colors.black),
+          ),
+          centerTitle: true,
+          actions: [
+            if (isEditing)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.black),
+                onPressed: _deleteItem,
+              ),
+          ],
         ),
-        title: Text(
-          isEditing ? l10n.editItem : l10n.addItem,
-          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
-        ),
-        centerTitle: true,
-        actions: [
-          if (isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.black),
-              onPressed: _deleteItem,
-            ),
-        ],
-      ),
-      body: Container(
+        body: Container(
         margin: const EdgeInsets.only(top: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5), // Shadow upwards/around
+            ),
+          ],
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -201,9 +370,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   child: Container(
                     height: 200,
                     decoration: BoxDecoration(
-                      color: _imagePath != null ? Colors.transparent : Colors.grey[100],
+                      color: _imagePath != null 
+                          ? Colors.transparent 
+                          : (isDark ? Colors.grey[800] : Colors.grey[100]),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.black, width: 2),
+                      border: Border.all(
+                        color: isDark ? Colors.white54 : Colors.black, 
+                        width: 2
+                      ),
                     ),
                     child: _imagePath != null
                         ? ClipRRect(
@@ -211,6 +385,18 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             child: Image.file(
                               File(_imagePath!),
                               fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                                  child: Center(
+                                    child: Icon(
+                                      Category.getByName(_categoryController.text).icon,
+                                      size: 64,
+                                      color: isDark ? Colors.grey[600] : Colors.grey[400],
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           )
                         : Column(
@@ -219,13 +405,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
                               Icon(
                                 Category.getByName(_categoryController.text).icon,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: isDark ? Colors.grey[600] : Colors.grey[400],
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 '点击添加商品图片',
                                 style: TextStyle(
-                                  color: Colors.grey[600],
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                                   fontSize: 14,
                                 ),
                               ),
@@ -234,14 +420,80 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
                 // Name Field
                 _buildLabel(l10n.name),
                 TextFormField(
                   controller: _nameController,
-                  decoration: _inputDecoration(l10n.name),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  decoration: _inputDecoration(l10n.name).copyWith(
+                    hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                  ),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Please enter a name' : null,
+                ),
+                const SizedBox(height: 24),
+
+                // Quantity Selector
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '数量',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          _buildQuantityButton(
+                            icon: Icons.remove,
+                            onPressed: () {
+                              if (_quantity > 1) {
+                                setState(() => _quantity--);
+                              }
+                            },
+                          ),
+                          Container(
+                            width: 40,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$_quantity',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: theme.textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          ),
+                          _buildQuantityButton(
+                            icon: Icons.add,
+                            onPressed: () {
+                              setState(() => _quantity++);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _buildLabel(l10n.category),
@@ -267,13 +519,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? Colors.black : Colors.grey.shade100,
+                                color: isSelected 
+                                    ? (isDark ? theme.colorScheme.primary : Colors.black) 
+                                    : (isDark ? Colors.grey[800] : Colors.grey.shade100),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
                                 Category.getLocalizedName(context, category.name),
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black,
+                                  color: isSelected 
+                                      ? (isDark ? Colors.black : Colors.white) 
+                                      : (isDark ? Colors.white : Colors.black),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -286,11 +542,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.black, width: 1),
+                              border: Border.all(
+                                color: isDark ? Colors.white54 : Colors.black, 
+                                width: 1
+                              ),
                             ),
-                            child: const Icon(Icons.add, size: 20, color: Colors.black),
+                            child: Icon(Icons.add, size: 20, color: theme.iconTheme.color),
                           ),
                         ),
                       ],
@@ -298,65 +557,316 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                _buildLabel(l10n.expiryDate),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                const SizedBox(height: 24),
+                
+                // Date Input Mode Toggle
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[800] : AppColors.grey100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(4),
                   child: Row(
                     children: [
-                      _buildQuickDateChip('+3 Days', const Duration(days: 3)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+1 Week', const Duration(days: 7)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+2 Week', const Duration(days: 14)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+1 Month', const Duration(days: 30)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+6 Months', const Duration(days: 180)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+12 Months', const Duration(days: 365)),
-                      const SizedBox(width: 12),
-                      _buildQuickDateChip('+24 Months', const Duration(days: 730)),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isProductionMode = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: !_isProductionMode 
+                                  ? (isDark ? Colors.grey[700] : Colors.white) 
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: !_isProductionMode ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ] : [],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '直接设置到期日',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: !_isProductionMode 
+                                    ? (isDark ? Colors.white : Colors.black) 
+                                    : (isDark ? Colors.grey[400] : Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() {
+                            _isProductionMode = true;
+                            _calculateExpiryDate(); // Initial calculation
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _isProductionMode 
+                                  ? (isDark ? Colors.grey[700] : Colors.white) 
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: _isProductionMode ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ] : [],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '生产日期 + 保质期',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _isProductionMode 
+                                    ? (isDark ? Colors.white : Colors.black) 
+                                    : (isDark ? Colors.grey[400] : Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-                      locale: Localizations.localeOf(context),
-                    );
-                    if (date != null) {
-                      setState(() => _expiryDate = date);
-                    }
-                  },
-                  child: Container(
+                const SizedBox(height: 24),
+
+                if (!_isProductionMode) ...[
+                  _buildLabel(l10n.expiryDate),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildQuickDateChip('+3 Days', const Duration(days: 3)),
+                        const SizedBox(width: 12),
+                        _buildQuickDateChip('+1 Week', const Duration(days: 7)),
+                        const SizedBox(width: 12),
+                        _buildQuickDateChip('+1 Month', const Duration(days: 30)),
+                        const SizedBox(width: 12),
+                        _buildQuickDateChip('+6 Months', const Duration(days: 180)),
+                        const SizedBox(width: 12),
+                        _buildQuickDateChip('+1 Year', const Duration(days: 365)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 7)),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                        locale: Localizations.localeOf(context),
+                      );
+                      if (date != null) {
+                        setState(() => _expiryDate = date);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : AppColors.grey100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white54 : Colors.black, 
+                          width: 2
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_today, size: 20, color: theme.iconTheme.color),
+                          const SizedBox(width: 8),
+                          Text(
+                            _expiryDate == null
+                                ? '选择到期时间'
+                                : DateFormat.yMMMd(l10n.localeName).format(_expiryDate!),
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // Production Date Input
+                  _buildLabel('生产日期'),
+                  GestureDetector(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _productionDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                        locale: Localizations.localeOf(context),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _productionDate = date;
+                          _calculateExpiryDate();
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : AppColors.grey100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white54 : Colors.black, 
+                          width: 1
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                          const SizedBox(width: 12),
+                          Text(
+                            DateFormat.yMMMd(l10n.localeName).format(_productionDate),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 16,
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Shelf Life Input
+                  _buildLabel('保质期'),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[800] : AppColors.grey100,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? Colors.white54 : Colors.black, 
+                              width: 1
+                            ),
+                          ),
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              hintText: '数值',
+                              hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                            ),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 18,
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
+                            controller: TextEditingController(text: _shelfLifeValue.toString())
+                              ..selection = TextSelection.fromPosition(
+                                TextPosition(offset: _shelfLifeValue.toString().length)
+                              ),
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                setState(() {
+                                  _shelfLifeValue = int.parse(value);
+                                  _calculateExpiryDate();
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[800] : AppColors.grey100,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? Colors.white54 : Colors.black, 
+                              width: 1
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _shelfLifeUnit,
+                              isExpanded: true,
+                              dropdownColor: theme.colorScheme.surface,
+                              items: ['Days', 'Weeks', 'Months', 'Years'].map((String value) {
+                                String label = value;
+                                if (value == 'Days') label = '天';
+                                if (value == 'Weeks') label = '周';
+                                if (value == 'Months') label = '个月';
+                                if (value == 'Years') label = '年';
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.textTheme.bodyLarge?.color,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _shelfLifeUnit = newValue!;
+                                  _calculateExpiryDate();
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Calculated Expiry Date Display
+                  Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.grey100,
+                      color: AppColors.secondary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black, width: 2),
+                      border: Border.all(color: AppColors.secondary, width: 2),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.calendar_today, size: 20, color: Colors.black),
-                        const SizedBox(width: 8),
                         Text(
-                          _expiryDate == null
-                              ? '选择到期时间'
-                              : DateFormat.yMMMd(l10n.localeName).format(_expiryDate!),
-                          style: AppTextStyles.bodyLarge.copyWith(
+                          '计算出的到期日:',
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        Text(
+                          DateFormat.yMMMd(l10n.localeName).format(_expiryDate!),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 24),
                 _buildLabel(l10n.note),
                 TextFormField(
@@ -394,6 +904,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
             ),
           ),
         ),
+        ),
       ),
     );
   }
@@ -426,13 +937,14 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   Widget _buildLabel(String text) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 4),
       child: Text(
         text,
         style: AppTextStyles.labelSmall.copyWith(
           fontWeight: FontWeight.w900,
-          color: Colors.black,
+          color: theme.textTheme.bodyLarge?.color,
           fontSize: 16,
         ),
       ),
@@ -440,10 +952,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   InputDecoration _inputDecoration(String hint) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: AppColors.grey100,
+      fillColor: isDark ? Colors.grey[800] : AppColors.grey100,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -454,7 +968,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.black, width: 2),
+        borderSide: BorderSide(
+          color: isDark ? theme.colorScheme.primary : Colors.black, 
+          width: 2
+        ),
       ),
       contentPadding: const EdgeInsets.all(20),
     );

@@ -31,18 +31,8 @@ class ItemProvider extends ChangeNotifier {
         item.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
     }
 
-    switch (_sortOption) {
-      case SortOption.expiryDate:
-        filtered.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
-        break;
-      case SortOption.name:
-        filtered.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case SortOption.purchaseDate:
-        filtered.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
-        break;
-    }
-
+    // The _items list is already sorted by _sortItems() when loaded or modified.
+    // This getter only applies filtering.
     return filtered;
   }
 
@@ -61,6 +51,7 @@ class ItemProvider extends ChangeNotifier {
 
   void setSortOption(SortOption option) {
     _sortOption = option;
+    _sortItems();
     notifyListeners();
   }
 
@@ -126,8 +117,49 @@ class ItemProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void togglePin(String id) {
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index != -1) {
+      final item = _items[index];
+      final updatedItem = Item(
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        expiryDate: item.expiryDate,
+        purchaseDate: item.purchaseDate,
+        note: item.note,
+        imagePath: item.imagePath,
+        quantity: item.quantity,
+        isPinned: !item.isPinned,
+      );
+      _items[index] = updatedItem;
+      _storageService.updateItem(updatedItem);
+      _sortItems();
+      notifyListeners();
+    }
+  }
+
   void _sortItems() {
-    _items.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));
+    switch (_sortOption) {
+      case SortOption.expiryDate:
+        _items.sort((a, b) {
+          if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
+          return a.expiryDate.compareTo(b.expiryDate);
+        });
+        break;
+      case SortOption.purchaseDate:
+        _items.sort((a, b) {
+          if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
+          return b.purchaseDate.compareTo(a.purchaseDate);
+        });
+        break;
+      case SortOption.name:
+        _items.sort((a, b) {
+          if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
+          return a.name.compareTo(b.name);
+        });
+        break;
+    }
   }
 
   Future<void> addItem(Item item) async {
