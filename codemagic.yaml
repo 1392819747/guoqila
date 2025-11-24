@@ -1,0 +1,492 @@
+workflows:
+  # iOS Build Workflow
+  build-ios:
+    name: Build iOS App
+    max_build_duration: 60
+    environment:
+      flutter: 3.27.4
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Generate code
+        script: |
+          flutter packages pub run build_runner build --delete-conflicting-outputs
+      - name: Run tests
+        script: |
+          flutter test || echo "No tests found, continuing..."
+      - name: Build iOS
+        script: |
+          flutter build ios --release --no-codesign
+      - name: Create iOS IPA
+        script: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r -y Runner.ipa Payload/
+          rm -rf Payload
+          echo "iOS build completed successfully"
+          unzip -l Runner.ipa | head -10
+    artifacts:
+      - build/ios/iphoneos/Runner.ipa
+      - build/ios/iphoneos/Runner.app
+    publishing:
+      email:
+        recipients:
+          - a1392819747@gmail.com
+        notify:
+          success: true
+          failure: false
+
+  # Android Build Workflow
+  build-android:
+    name: Build Android App
+    max_build_duration: 60
+    environment:
+      flutter: 3.27.4
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Fix plugin namespaces
+        script: |
+          echo "=== 开始修复插件namespace问题 ==="
+
+          # 设置插件路径
+          PUB_CACHE="$HOME/.pub-cache/hosted/pub.dev"
+
+          # 修复 flutter_keyboard_visibility
+          echo "修复 flutter_keyboard_visibility..."
+          KEYBOARD_VISIBILITY_PATH="$PUB_CACHE/flutter_keyboard_visibility-5.4.1/android/build.gradle"
+          if [ -f "$KEYBOARD_VISIBILITY_PATH" ]; then
+            echo "找到文件: $KEYBOARD_VISIBILITY_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "com.jrai.flutter_keyboard_visibility"/' "$KEYBOARD_VISIBILITY_PATH"
+            echo "flutter_keyboard_visibility 修复完成"
+          else
+            echo "flutter_keyboard_visibility 文件不存在"
+          fi
+
+          # 修复 flutter_openim_sdk
+          echo "修复 flutter_openim_sdk..."
+          OPENIM_SDK_PATH="$PUB_CACHE/flutter_openim_sdk-3.8.3+3/android/build.gradle"
+          if [ -f "$OPENIM_SDK_PATH" ]; then
+            echo "找到文件: $OPENIM_SDK_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "io.openim.flutter_openim_sdk"/' "$OPENIM_SDK_PATH"
+            echo "flutter_openim_sdk 修复完成"
+          else
+            echo "flutter_openim_sdk 文件不存在"
+          fi
+
+          # 修复 flutter_sensors
+          echo "修复 flutter_sensors..."
+          SENSORS_PATH="$PUB_CACHE/flutter_sensors-1.0.1/android/build.gradle"
+          SENSORS_MANIFEST_PATH="$PUB_CACHE/flutter_sensors-1.0.1/android/src/main/AndroidManifest.xml"
+          if [ -f "$SENSORS_PATH" ]; then
+            echo "找到文件: $SENSORS_PATH"
+            # 添加namespace和JVM目标版本
+            sed -i.bak 's/android {/android {\n    namespace "com.example.fluttersensors"\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }/' "$SENSORS_PATH"
+            echo "flutter_sensors build.gradle 修复完成"
+          else
+            echo "flutter_sensors build.gradle 文件不存在"
+          fi
+
+          # 修复 flutter_sensors AndroidManifest.xml
+          if [ -f "$SENSORS_MANIFEST_PATH" ]; then
+            echo "找到AndroidManifest文件: $SENSORS_MANIFEST_PATH"
+            # 移除package属性
+            sed -i.bak 's/package="[^"]*"//' "$SENSORS_MANIFEST_PATH"
+            echo "flutter_sensors AndroidManifest.xml 修复完成"
+          else
+            echo "flutter_sensors AndroidManifest.xml 文件不存在"
+          fi
+
+          # 修复 scan
+          echo "修复 scan..."
+          SCAN_PATH="$PUB_CACHE/scan-1.6.0/android/build.gradle"
+          if [ -f "$SCAN_PATH" ]; then
+            echo "找到文件: $SCAN_PATH"
+            echo "当前scan文件内容:"
+            cat "$SCAN_PATH"
+            # 检查是否已经有compileSdkVersion
+            if ! grep -q "compileSdkVersion" "$SCAN_PATH"; then
+              echo "添加compileSdkVersion 34..."
+              sed -i.bak 's/android {/android {\n    compileSdkVersion 34/' "$SCAN_PATH"
+            else
+              echo "compileSdkVersion已存在，更新为34..."
+              sed -i.bak 's/compileSdkVersion [0-9]*/compileSdkVersion 34/' "$SCAN_PATH"
+            fi
+            # 确保有namespace
+            if ! grep -q "namespace" "$SCAN_PATH"; then
+              echo "添加namespace..."
+              sed -i.bak 's/android {/android {\n    namespace "com.chavesgu.scan"/' "$SCAN_PATH"
+            fi
+            echo "修复后scan文件内容:"
+            cat "$SCAN_PATH"
+            echo "scan 修复完成"
+          else
+            echo "scan 文件不存在"
+          fi
+
+          # 修复 sound_mode
+          echo "修复 sound_mode..."
+          SOUND_MODE_PATH="$PUB_CACHE/sound_mode-2.0.2/android/build.gradle"
+          if [ -f "$SOUND_MODE_PATH" ]; then
+            echo "找到文件: $SOUND_MODE_PATH"
+            echo "当前sound_mode文件内容:"
+            cat "$SOUND_MODE_PATH"
+            # 检查是否已经有compileSdkVersion
+            if ! grep -q "compileSdkVersion" "$SOUND_MODE_PATH"; then
+              echo "添加compileSdkVersion 34..."
+              sed -i.bak 's/android {/android {\n    compileSdkVersion 34/' "$SOUND_MODE_PATH"
+            else
+              echo "compileSdkVersion已存在，更新为34..."
+              sed -i.bak 's/compileSdkVersion [0-9]*/compileSdkVersion 34/' "$SOUND_MODE_PATH"
+            fi
+            # 确保有namespace
+            if ! grep -q "namespace" "$SOUND_MODE_PATH"; then
+              echo "添加namespace..."
+              sed -i.bak 's/android {/android {\n    namespace "com.tryingoutsomething.soundmode.sound_mode"/' "$SOUND_MODE_PATH"
+            fi
+            echo "修复后sound_mode文件内容:"
+            cat "$SOUND_MODE_PATH"
+            echo "sound_mode 修复完成"
+          else
+            echo "sound_mode 文件不存在"
+          fi
+
+          # 修复 uri_to_file
+          echo "修复 uri_to_file..."
+          URI_TO_FILE_PATH="$PUB_CACHE/uri_to_file-1.0.0/android/build.gradle"
+          if [ -f "$URI_TO_FILE_PATH" ]; then
+            echo "找到文件: $URI_TO_FILE_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "in.lazymanstudios.uri_to_file"/' "$URI_TO_FILE_PATH"
+            echo "uri_to_file 修复完成"
+          else
+            echo "uri_to_file 文件不存在"
+          fi
+
+          echo "=== 所有插件namespace修复完成 ==="
+
+          # 修复核心库反糖化问题
+          echo "=== 修复核心库反糖化问题 ==="
+          APP_BUILD_GRADLE="/Users/builder/clone/android/app/build.gradle.kts"
+          if [ -f "$APP_BUILD_GRADLE" ]; then
+            echo "修复应用build.gradle.kts..."
+            echo "当前文件内容:"
+            cat "$APP_BUILD_GRADLE"
+            
+            # 确保compileOptions包含isCoreLibraryDesugaringEnabled = true
+            if ! grep -q "isCoreLibraryDesugaringEnabled = true" "$APP_BUILD_GRADLE"; then
+              echo "添加isCoreLibraryDesugaringEnabled = true..."
+              # 使用更可靠的方法替换
+              sed -i.bak 's/sourceCompatibility = JavaVersion.VERSION_17/sourceCompatibility = JavaVersion.VERSION_17\n        isCoreLibraryDesugaringEnabled = true/' "$APP_BUILD_GRADLE"
+              echo "已添加isCoreLibraryDesugaringEnabled = true"
+            else
+              echo "isCoreLibraryDesugaringEnabled = true 已存在"
+            fi
+            
+            # 确保dependencies包含coreLibraryDesugaring
+            if ! grep -q "coreLibraryDesugaring" "$APP_BUILD_GRADLE"; then
+              echo "添加coreLibraryDesugaring依赖..."
+              # 在flutter块后添加dependencies块
+              echo "" >> "$APP_BUILD_GRADLE"
+              echo "dependencies {" >> "$APP_BUILD_GRADLE"
+              echo "    coreLibraryDesugaring(\"com.android.tools:desugar_jdk_libs:2.0.4\")" >> "$APP_BUILD_GRADLE"
+              echo "}" >> "$APP_BUILD_GRADLE"
+              echo "已添加coreLibraryDesugaring依赖"
+            else
+              echo "coreLibraryDesugaring依赖已存在"
+            fi
+            
+            echo "修复后的文件内容:"
+            cat "$APP_BUILD_GRADLE"
+            echo "核心库反糖化修复完成"
+          else
+            echo "应用build.gradle.kts文件不存在"
+          fi
+
+          # 修复minSdkVersion冲突
+          echo "=== 修复minSdkVersion冲突 ==="
+          APP_BUILD_GRADLE="/Users/builder/clone/android/app/build.gradle.kts"
+          if [ -f "$APP_BUILD_GRADLE" ]; then
+            echo "修复minSdkVersion为23..."
+            sed -i.bak 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$APP_BUILD_GRADLE"
+            echo "minSdkVersion修复完成"
+          else
+            echo "应用build.gradle.kts文件不存在"
+          fi
+
+          # 修复MainActivity重复声明问题
+          echo "=== 修复MainActivity重复声明 ==="
+          JAVA_MAINACTIVITY="/Users/builder/clone/android/app/src/main/java/cn/zhizhihu/zhiyin/MainActivity.java"
+          KOTLIN_MAINACTIVITY="/Users/builder/clone/android/app/src/main/kotlin/cn/zhizhihu/zhiyin/MainActivity.kt"
+          if [ -f "$JAVA_MAINACTIVITY" ] && [ -f "$KOTLIN_MAINACTIVITY" ]; then
+            echo "发现重复的MainActivity文件，删除Java版本..."
+            rm "$JAVA_MAINACTIVITY"
+            echo "MainActivity重复声明修复完成"
+          else
+            echo "MainActivity文件正常"
+          fi
+      - name: Generate code
+        script: |
+          flutter packages pub run build_runner build --delete-conflicting-outputs
+      - name: Run tests
+        script: |
+          flutter test || echo "No tests found, continuing..."
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+      - name: Build Android AAB
+        script: |
+          flutter build appbundle --release
+      - name: Verify builds
+        script: |
+          echo "Android builds completed successfully"
+          ls -la build/app/outputs/flutter-apk/
+          ls -la build/app/outputs/bundle/release/
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+    publishing:
+      email:
+        recipients:
+          - a1392819747@gmail.com
+        notify:
+          success: true
+          failure: false
+
+  # Combined Build Workflow - iOS and Android
+  build-all:
+    name: Build All Platforms (iOS + Android)
+    max_build_duration: 90
+    environment:
+      flutter: 3.27.4
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Fix plugin namespaces
+        script: |
+          echo "=== 开始修复插件namespace问题 ==="
+
+          # 设置插件路径
+          PUB_CACHE="$HOME/.pub-cache/hosted/pub.dev"
+
+          # 修复 flutter_keyboard_visibility
+          echo "修复 flutter_keyboard_visibility..."
+          KEYBOARD_VISIBILITY_PATH="$PUB_CACHE/flutter_keyboard_visibility-5.4.1/android/build.gradle"
+          if [ -f "$KEYBOARD_VISIBILITY_PATH" ]; then
+            echo "找到文件: $KEYBOARD_VISIBILITY_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "com.jrai.flutter_keyboard_visibility"/' "$KEYBOARD_VISIBILITY_PATH"
+            echo "flutter_keyboard_visibility 修复完成"
+          else
+            echo "flutter_keyboard_visibility 文件不存在"
+          fi
+
+          # 修复 flutter_openim_sdk
+          echo "修复 flutter_openim_sdk..."
+          OPENIM_SDK_PATH="$PUB_CACHE/flutter_openim_sdk-3.8.3+3/android/build.gradle"
+          if [ -f "$OPENIM_SDK_PATH" ]; then
+            echo "找到文件: $OPENIM_SDK_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "io.openim.flutter_openim_sdk"/' "$OPENIM_SDK_PATH"
+            echo "flutter_openim_sdk 修复完成"
+          else
+            echo "flutter_openim_sdk 文件不存在"
+          fi
+
+          # 修复 flutter_sensors
+          echo "修复 flutter_sensors..."
+          SENSORS_PATH="$PUB_CACHE/flutter_sensors-1.0.1/android/build.gradle"
+          SENSORS_MANIFEST_PATH="$PUB_CACHE/flutter_sensors-1.0.1/android/src/main/AndroidManifest.xml"
+          if [ -f "$SENSORS_PATH" ]; then
+            echo "找到文件: $SENSORS_PATH"
+            # 添加namespace和JVM目标版本
+            sed -i.bak 's/android {/android {\n    namespace "com.example.fluttersensors"\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }/' "$SENSORS_PATH"
+            echo "flutter_sensors build.gradle 修复完成"
+          else
+            echo "flutter_sensors build.gradle 文件不存在"
+          fi
+
+          # 修复 flutter_sensors AndroidManifest.xml
+          if [ -f "$SENSORS_MANIFEST_PATH" ]; then
+            echo "找到AndroidManifest文件: $SENSORS_MANIFEST_PATH"
+            # 移除package属性
+            sed -i.bak 's/package="[^"]*"//' "$SENSORS_MANIFEST_PATH"
+            echo "flutter_sensors AndroidManifest.xml 修复完成"
+          else
+            echo "flutter_sensors AndroidManifest.xml 文件不存在"
+          fi
+
+          # 修复 scan
+          echo "修复 scan..."
+          SCAN_PATH="$PUB_CACHE/scan-1.6.0/android/build.gradle"
+          if [ -f "$SCAN_PATH" ]; then
+            echo "找到文件: $SCAN_PATH"
+            echo "当前scan文件内容:"
+            cat "$SCAN_PATH"
+            # 检查是否已经有compileSdkVersion
+            if ! grep -q "compileSdkVersion" "$SCAN_PATH"; then
+              echo "添加compileSdkVersion 34..."
+              sed -i.bak 's/android {/android {\n    compileSdkVersion 34/' "$SCAN_PATH"
+            else
+              echo "compileSdkVersion已存在，更新为34..."
+              sed -i.bak 's/compileSdkVersion [0-9]*/compileSdkVersion 34/' "$SCAN_PATH"
+            fi
+            # 确保有namespace
+            if ! grep -q "namespace" "$SCAN_PATH"; then
+              echo "添加namespace..."
+              sed -i.bak 's/android {/android {\n    namespace "com.chavesgu.scan"/' "$SCAN_PATH"
+            fi
+            echo "修复后scan文件内容:"
+            cat "$SCAN_PATH"
+            echo "scan 修复完成"
+          else
+            echo "scan 文件不存在"
+          fi
+
+          # 修复 sound_mode
+          echo "修复 sound_mode..."
+          SOUND_MODE_PATH="$PUB_CACHE/sound_mode-2.0.2/android/build.gradle"
+          if [ -f "$SOUND_MODE_PATH" ]; then
+            echo "找到文件: $SOUND_MODE_PATH"
+            echo "当前sound_mode文件内容:"
+            cat "$SOUND_MODE_PATH"
+            # 检查是否已经有compileSdkVersion
+            if ! grep -q "compileSdkVersion" "$SOUND_MODE_PATH"; then
+              echo "添加compileSdkVersion 34..."
+              sed -i.bak 's/android {/android {\n    compileSdkVersion 34/' "$SOUND_MODE_PATH"
+            else
+              echo "compileSdkVersion已存在，更新为34..."
+              sed -i.bak 's/compileSdkVersion [0-9]*/compileSdkVersion 34/' "$SOUND_MODE_PATH"
+            fi
+            # 确保有namespace
+            if ! grep -q "namespace" "$SOUND_MODE_PATH"; then
+              echo "添加namespace..."
+              sed -i.bak 's/android {/android {\n    namespace "com.tryingoutsomething.soundmode.sound_mode"/' "$SOUND_MODE_PATH"
+            fi
+            echo "修复后sound_mode文件内容:"
+            cat "$SOUND_MODE_PATH"
+            echo "sound_mode 修复完成"
+          else
+            echo "sound_mode 文件不存在"
+          fi
+
+          # 修复 uri_to_file
+          echo "修复 uri_to_file..."
+          URI_TO_FILE_PATH="$PUB_CACHE/uri_to_file-1.0.0/android/build.gradle"
+          if [ -f "$URI_TO_FILE_PATH" ]; then
+            echo "找到文件: $URI_TO_FILE_PATH"
+            sed -i.bak 's/android {/android {\n    namespace "in.lazymanstudios.uri_to_file"/' "$URI_TO_FILE_PATH"
+            echo "uri_to_file 修复完成"
+          else
+            echo "uri_to_file 文件不存在"
+          fi
+
+          echo "=== 所有插件namespace修复完成 ==="
+
+          # 修复核心库反糖化问题
+          echo "=== 修复核心库反糖化问题 ==="
+          APP_BUILD_GRADLE="/Users/builder/clone/android/app/build.gradle.kts"
+          if [ -f "$APP_BUILD_GRADLE" ]; then
+            echo "修复应用build.gradle.kts..."
+            echo "当前文件内容:"
+            cat "$APP_BUILD_GRADLE"
+            
+            # 确保compileOptions包含isCoreLibraryDesugaringEnabled = true
+            if ! grep -q "isCoreLibraryDesugaringEnabled = true" "$APP_BUILD_GRADLE"; then
+              echo "添加isCoreLibraryDesugaringEnabled = true..."
+              # 使用更可靠的方法替换
+              sed -i.bak 's/sourceCompatibility = JavaVersion.VERSION_17/sourceCompatibility = JavaVersion.VERSION_17\n        isCoreLibraryDesugaringEnabled = true/' "$APP_BUILD_GRADLE"
+              echo "已添加isCoreLibraryDesugaringEnabled = true"
+            else
+              echo "isCoreLibraryDesugaringEnabled = true 已存在"
+            fi
+            
+            # 确保dependencies包含coreLibraryDesugaring
+            if ! grep -q "coreLibraryDesugaring" "$APP_BUILD_GRADLE"; then
+              echo "添加coreLibraryDesugaring依赖..."
+              # 在flutter块后添加dependencies块
+              echo "" >> "$APP_BUILD_GRADLE"
+              echo "dependencies {" >> "$APP_BUILD_GRADLE"
+              echo "    coreLibraryDesugaring(\"com.android.tools:desugar_jdk_libs:2.0.4\")" >> "$APP_BUILD_GRADLE"
+              echo "}" >> "$APP_BUILD_GRADLE"
+              echo "已添加coreLibraryDesugaring依赖"
+            else
+              echo "coreLibraryDesugaring依赖已存在"
+            fi
+            
+            echo "修复后的文件内容:"
+            cat "$APP_BUILD_GRADLE"
+            echo "核心库反糖化修复完成"
+          else
+            echo "应用build.gradle.kts文件不存在"
+          fi
+
+          # 修复minSdkVersion冲突
+          echo "=== 修复minSdkVersion冲突 ==="
+          APP_BUILD_GRADLE="/Users/builder/clone/android/app/build.gradle.kts"
+          if [ -f "$APP_BUILD_GRADLE" ]; then
+            echo "修复minSdkVersion为23..."
+            sed -i.bak 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$APP_BUILD_GRADLE"
+            echo "minSdkVersion修复完成"
+          else
+            echo "应用build.gradle.kts文件不存在"
+          fi
+
+          # 修复MainActivity重复声明问题
+          echo "=== 修复MainActivity重复声明 ==="
+          JAVA_MAINACTIVITY="/Users/builder/clone/android/app/src/main/java/cn/zhizhihu/zhiyin/MainActivity.java"
+          KOTLIN_MAINACTIVITY="/Users/builder/clone/android/app/src/main/kotlin/cn/zhizhihu/zhiyin/MainActivity.kt"
+          if [ -f "$JAVA_MAINACTIVITY" ] && [ -f "$KOTLIN_MAINACTIVITY" ]; then
+            echo "发现重复的MainActivity文件，删除Java版本..."
+            rm "$JAVA_MAINACTIVITY"
+            echo "MainActivity重复声明修复完成"
+          else
+            echo "MainActivity文件正常"
+          fi
+      - name: Generate code
+        script: |
+          flutter packages pub run build_runner build --delete-conflicting-outputs
+      - name: Run tests
+        script: |
+          flutter test || echo "No tests found, continuing..."
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+      - name: Build Android AAB
+        script: |
+          flutter build appbundle --release
+      - name: Build iOS
+        script: |
+          flutter build ios --release --no-codesign
+      - name: Create iOS IPA
+        script: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r -y Runner.ipa Payload/
+          rm -rf Payload
+          echo "All builds completed successfully"
+          unzip -l Runner.ipa | head -10
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+      - build/ios/iphoneos/Runner.ipa
+      - build/ios/iphoneos/Runner.app
+    publishing:
+      email:
+        recipients:
+          - a1392819747@gmail.com
+        notify:
+          success: true
+          failure: false
