@@ -9,7 +9,7 @@ await providerManager.init();
 
 router.post('/', async (req, res) => {
     try {
-        const { image } = req.body;
+        const { image, locale = 'zh' } = req.body;
 
         if (!image) {
             return res.status(400).json({
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
             });
         }
 
-        const result = await providerManager.recognizeWithFallback(image);
+        const result = await providerManager.recognizeWithFallback(image, locale);
         res.json(result);
 
     } catch (error) {

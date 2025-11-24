@@ -64,7 +64,7 @@ class ScanService {
   // Use production domain for all environments
   static String get _backendUrl => 'https://bxgq.zhizhihu.cn';
 
-  Future<ScanResult> scanImage(File imageFile) async {
+  Future<ScanResult> scanImage(File imageFile, {String locale = 'zh'}) async {
     try {
       debugPrint('📸 Compressing image...');
       // Compress image to reduce size and token usage
@@ -88,7 +88,10 @@ class ScanService {
           'Content-Type': 'application/json',
           'x-api-key': '9cec406282cf1ec58eb71640eeb90eb1', // TODO: Move to secure storage/config
         },
-        body: jsonEncode({'image': base64Image}),
+        body: jsonEncode({
+          'image': base64Image,
+          'locale': locale,
+        }),
       ).timeout(
         const Duration(seconds: 60), // Increased timeout to 60s
         onTimeout: () {

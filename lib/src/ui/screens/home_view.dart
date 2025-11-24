@@ -365,7 +365,8 @@ class _HomeViewState extends State<HomeView> with SingleTickerProviderStateMixin
       );
 
       final scanService = ScanService();
-      final result = await scanService.scanImage(File(image.path));
+      final locale = Localizations.localeOf(context).languageCode;
+      final result = await scanService.scanImage(File(image.path), locale: locale);
       
       if (!mounted) return;
       Navigator.pop(context); // Dismiss loading dialog
